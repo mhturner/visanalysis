@@ -219,7 +219,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
             sample_period = np.mean(np.diff(stack_times)) # sec
 
         self.response_timing = {'stack_times':stack_times, 'frame_times':frame_times, 'sample_period':sample_period }
-            
+
     def __getPVMetadata(self):
         metaData = ET.parse(os.path.join(self.image_data_directory, self.image_series_name) + '.xml')
         root = metaData.getroot()
@@ -241,6 +241,9 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         metadata['version'] = root.get('version')
         metadata['date'] = root.get('date')
         metadata['notes'] = root.get('notes')
+        metadata['volume'] = len(root.findall('Sequence')) > 1
+        if metadata['volume']:
+            metadata['bidirectionalZ'] = root.findall('Sequence')[0].get('bidirectionalZ')
 
         return metadata
 
