@@ -28,8 +28,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
             metaData = ET.parse(os.path.join(self.image_data_directory, self.image_series_name) + '.xml')
             root = metaData.getroot()
 
-            n_zstacks = len(root.findall('Sequence')[0].findall('Frame'))
-            if n_zstacks > 1: #i.e. multiple z stacks
+            if len(root.findall('Sequence')[0]) > 1: #i.e. multiple z stacks
                 raise(RuntimeError, "Multiple z planes detected! Use utilities.create_bruker_objects_from_zstack to create objs")
 
         self.z_index = z_index
