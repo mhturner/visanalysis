@@ -14,8 +14,12 @@ import re
 from tifffile import imsave
 
 from visanalysis import imaging_data
+from visanalysis.utilities.create_bruker_objects_from_zstack import create_bruker_objects_from_zstack
 
-file_directory = ''
+file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190613'
+file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190712'
+#file_directory = '/Users/minseung/Desktop/0709 testing'
+
 
 # get files of unregistered time series in current working directory
 file_names = fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif')
@@ -25,13 +29,19 @@ for file_name in file_names:
     series_number = int(re.split('-|\.',file_name)[-2])
     tmp_str = re.split('-', file_name)[1]
     fn = ''.join([tmp_str[0:4],'-',tmp_str[4:6],'-',tmp_str[6:8]])
-    ImagingData = imaging_data.BrukerData.ImagingDataObject(fn, series_number, load_rois = False)
-    ImagingData.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
-    ImagingData.loadImageSeries()
-    
-    ImagingData.registerStack()
-    save_path = os.path.join(file_directory, file_name.split('.')[0] + '_reg' + '.tif')
-    print('Saved: ' + save_path)
-    imsave(save_path, ImagingData.registered_series)
-    
-    os.remove(os.path.join(file_directory, file_name))
+    ImagingData = create_bruker_objects_from_zstack(fn, series_number, load_rois = False)
+
+    if not type(ImagingData) == list:
+        ImagingData = [ImagingData]
+    for idata in ImagingData:
+        idata.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
+        idata.loadImageSeries()
+        idata.registerStack()
+        if len(ImagingData) > 1: #multiple planes
+            save_path = os.path.join(file_directory, file_name.split('.')[0] + '_z' + str(idata.z_index) + '_reg' + '.tif')
+        else:
+            save_path = os.path.join(file_directory, file_name.split('.')[0] + '_reg' + '.tif')
+        imsave(save_path, idata.registered_series)
+        print('Saved: ' + save_path)
+
+    #os.remove(os.path.join(file_directory, file_name))

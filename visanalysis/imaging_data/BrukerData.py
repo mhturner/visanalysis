@@ -19,10 +19,20 @@ from visanalysis import imaging_data
 from visanalysis import plot_tools
 
 class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
-    def __init__(self, file_name, series_number, load_rois = True):
+    def __init__(self, file_name, series_number, load_rois = True, z_index=None):
         super().__init__(file_name, series_number) #call the parent class init
         # Image series is of the format: TSeries-YYYYMMDD-00n
         self.image_series_name = 'TSeries-' + file_name.replace('-','') + '-' + ('00' + str(series_number))[-3:]
+
+        if z_index is None: # If z_index is not provided, check whether it is a volume and split up the z stacks.
+            metaData = ET.parse(os.path.join(self.image_data_directory, self.image_series_name) + '.xml')
+            root = metaData.getroot()
+
+            n_zstacks = len(root.findall('Sequence')[0].findall('Frame'))
+            if n_zstacks > 1: #i.e. multiple z stacks
+                raise(RuntimeError, "Multiple z planes detected! Use utilities.create_bruker_objects_from_zstack to create objs")
+
+        self.z_index = z_index
 
         # Get timing info for acquisition and stimulus
         self.__getAcquisitionTiming()
@@ -46,6 +56,8 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         """
         with h5py.File(os.path.join(self.flystim_data_directory, self.file_name) + '.hdf5','r') as experiment_file:
             roi_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois')
+            if self.z_index is not None: # if z_index of volume specified
+                roi_group = roi_group.get('z'+str(self.z_index))
             if roi_group is None:
                 warnings.warn("!!No rois found for this image series!!")
                 return
@@ -132,10 +144,17 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         # Load image series
         #   Check to see if this series has already been registered
         self.raw_file_name = os.path.join(self.image_data_directory, self.image_series_name) + '.tif'
-        self.reg_file_name = os.path.join(self.image_data_directory, self.image_series_name) + '_reg.tif'
+        if self.z_index is None: # single plane
+            reg_fn_addition = '_reg.tif'
+        else: # multi plane
+            reg_fn_addition = '_z' + str(self.z_index) + '_reg.tif'
+        self.reg_file_name = os.path.join(self.image_data_directory, self.image_series_name) + reg_fn_addition
 
         if os.path.isfile(self.raw_file_name):
-            self.raw_series = io.imread(self.raw_file_name)
+            if self.z_index is None: # single plane
+                self.raw_series = io.imread(self.raw_file_name)
+            else: # multi plane
+                self.raw_series = io.imread(self.raw_file_name)[:,self.z_index,:,:]
             self.current_series = self.raw_series
         else:
             self.raw_series = None
@@ -189,10 +208,10 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         n_tframes = len(tframes)
         n_zstacks = len(tframes[0].findall('Frame'))
 
-        if n_tframes == 1:
-            # Single-plane, xy time series
-            stack_times = []
-            frame_times = []
+        stack_times = []
+        frame_times = []
+        # Single-plane, xy time series
+        if self.z_index == None:
             for child in root.find('Sequence').getchildren():
                 frTime = child.get('relativeTime')
                 if frTime is not None:
@@ -200,23 +219,32 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
             stack_times = np.array(stack_times)
             stack_times = stack_times[1:] #trim extra 0 at start
             frame_times = stack_times
-
             stack_times = stack_times # sec
             frame_times = frame_times # sec
             sample_period = np.mean(np.diff(stack_times)) # sec
         else:
-            # Multi-plane, xy time series for each plane
-            stack_times = [[] for _ in range(n_zstacks)]
             for tframe in tframes:
                 tz_stack = tframe.findall('Frame')
                 assert (len(tz_stack) == n_zstacks)
-                for z in range(n_zstacks):
-                    frTime = tz_stack[z].get('relativeTime')
-                    assert (frTime is not None)
-                    stack_times[z].append(float(frTime))
+                frTime = tz_stack[self.z_index].get('relativeTime')
+                assert (frTime is not None)
+                stack_times.append(float(frTime))
             stack_times = np.array(stack_times) #sec
             frame_times = stack_times.copy()    #sec
             sample_period = np.mean(np.diff(stack_times)) # sec
+        # else:
+        #     # Multi-plane, xy time series for each plane
+        #     stack_times = [[] for _ in range(n_zstacks)]
+        #     for tframe in tframes:
+        #         tz_stack = tframe.findall('Frame')
+        #         assert (len(tz_stack) == n_zstacks)
+        #         for z in range(n_zstacks):
+        #             frTime = tz_stack[z].get('relativeTime')
+        #             assert (frTime is not None)
+        #             stack_times[z].append(float(frTime))
+        #     stack_times = np.array(stack_times) #sec
+        #     frame_times = stack_times.copy()    #sec
+        #     sample_period = np.mean(np.diff(stack_times)) # sec
 
         self.response_timing = {'stack_times':stack_times, 'frame_times':frame_times, 'sample_period':sample_period }
 
@@ -241,8 +269,8 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         metadata['version'] = root.get('version')
         metadata['date'] = root.get('date')
         metadata['notes'] = root.get('notes')
-        metadata['volume'] = len(root.findall('Sequence')) > 1
-        if metadata['volume']:
+        metadata['is_volume'] = len(root.findall('Sequence')) > 1
+        if metadata['is_volume']:
             metadata['bidirectionalZ'] = root.findall('Sequence')[0].get('bidirectionalZ')
 
         return metadata
