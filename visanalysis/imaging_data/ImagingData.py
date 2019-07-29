@@ -231,6 +231,8 @@ class ImagingDataObject():
     def getAvailableROIsets(self, get_rois_from_other_series = True):
         with h5py.File(os.path.join(self.flystim_data_directory, self.file_name) + '.hdf5','r+') as experiment_file:
             roi_parent_group = experiment_file['/epoch_runs'].get(str(self.series_number)).require_group('rois')
+            if self.z_index is not None:
+                roi_parent_group = roi_parent_group.require_group("z" + str(self.z_index)) #opens group if it exists or creates it if it doesn't
             roi_set_names = []
             for roi_set in roi_parent_group:
                 roi_set_names.append(roi_set)
@@ -244,6 +246,8 @@ class ImagingDataObject():
                         series_group = experiment_file['/epoch_runs'].get(series)
                         prefix = 'series{}:'.format(series)
                         roi_parent_group = series_group.require_group('rois')
+                        if self.z_index is not None:
+                            roi_parent_group = roi_parent_group.require_group("z" + str(self.z_index)) #opens group if it exists or creates it if it doesn't
                         for roi_set in roi_parent_group:
                             roi_set_group = roi_parent_group.get(roi_set)
                             roi_image = roi_set_group.get("roi_image")[:]

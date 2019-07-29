@@ -1,10 +1,11 @@
 
 from visanalysis.imaging_data import BrukerData
 
-file_name = '2019-06-13'
-series_number = 3
+file_name = '2019-07-12'
+series_number = 1 #index from 1
+z_index = 4 #index from 0
 
-ImagingData = BrukerData.ImagingDataObject(file_name, series_number, load_rois=False, z_index=0)
+ImagingData = BrukerData.ImagingDataObject(file_name, series_number, load_rois=False, z_index=z_index)
 ImagingData.loadImageSeries()
 
 # %% Choose Rois
