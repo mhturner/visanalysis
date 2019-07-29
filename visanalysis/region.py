@@ -28,7 +28,7 @@ class MultiROISelector(QWidget):
         self.roiType = roiType
         self.roiRadius = roiRadius #if set to a number, will produce pre-defined size ROI where user places ROI
 
-        self.maxRois = 8
+        self.maxRois = 12
 
         self.plotWidgets = []
         
