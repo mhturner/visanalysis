@@ -17,7 +17,8 @@ setup(
         'scikit-image',
         'thunder-registration',
         'seaborn',
-        'pyqtgraph'],
+        'pyqtgraph',
+        'tqdm'],
     include_package_data=True,
     zip_safe=False,
 )
