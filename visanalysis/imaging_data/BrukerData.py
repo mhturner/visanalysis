@@ -33,12 +33,14 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
 
         self.z_index = z_index
 
+        # Get metadata INCLUDING VOLUME Info
+        self.metadata = self.__getPVMetadata()
+
         # Get timing info for acquisition and stimulus
         self.__getAcquisitionTiming()
         self.__getStimulusTiming()
         self.__checkEpochNumberCount()
 
-        self.metadata = self.__getPVMetadata()
 
         if load_rois:
             # Get epoch responses for rois
@@ -222,12 +224,16 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
             frame_times = frame_times # sec
             sample_period = np.mean(np.diff(stack_times)) # sec
         else:
+            is_down = self.metadata['Zdepths'][1] - self.metadata['Zdepths'][1] > 0 # whether the first z scan is downwards
             for tframe in tframes:
                 tz_stack = tframe.findall('Frame')
                 assert (len(tz_stack) == n_zstacks)
-                frTime = tz_stack[self.z_index].get('relativeTime')
+                image_index = self.z_index if is_down else n_zstacks-self.z_index-1
+                frTime = tz_stack[image_index].get('relativeTime')
                 assert (frTime is not None)
                 stack_times.append(float(frTime))
+                if self.metadata['bidirectionalZ']:
+                    is_down = not is_down
             stack_times = np.array(stack_times) #sec
             frame_times = stack_times.copy()    #sec
             sample_period = np.mean(np.diff(stack_times)) # sec
@@ -268,9 +274,17 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         metadata['version'] = root.get('version')
         metadata['date'] = root.get('date')
         metadata['notes'] = root.get('notes')
-        metadata['is_volume'] = len(root.findall('Sequence')) > 1
+
+        metadata['is_volume'] = 'ZSeries' in root.find('Sequence').get('type')
         if metadata['is_volume']:
-            metadata['bidirectionalZ'] = root.findall('Sequence')[0].get('bidirectionalZ')
+            metadata['bidirectionalZ'] = bool(root.find('Sequence').get('bidirectionalZ'))
+
+            metadata['Zdepths'] = []
+            for z in range(n_zstacks):
+                if len(root.findall('Sequence')[0].findall('Frame')[5].find('PVStateShard').findall('PVStateValue')) == 3: # Zdepth is specified
+                    metadata['Zdepths'].append(root.findall('Sequence')[0].findall('Frame')[0].find('PVStateShard').findall('PVStateValue')[2].findall('SubindexedValues')[2].findall('SubindexedValue')[1].get('value')
+                else: # Zdepth is not specified... happens for the last index??
+                    metadata['Zdepths'].append([pvsv.findall('SubindexedValues')[2] for pvsv in root.find('PVStateShard').findall('PVStateValue') if ('key', 'positionCurrent') in pvsv.items()][0].findall('SubindexedValue')[1].get('value'))
 
         return metadata
 
