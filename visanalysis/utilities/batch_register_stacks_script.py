@@ -20,6 +20,7 @@ file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Dat
 file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190712'
 #file_directory = '/Users/minseung/Desktop/0709 testing'
 
+take_even=True
 
 # get files of unregistered time series in current working directory
 file_names = fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif')
@@ -36,6 +37,9 @@ for file_name in file_names:
     for idata in ImagingData:
         idata.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
         idata.loadImageSeries()
+        if take_even is not None:
+            idata = take_every_other_frame(idata, take_even=take_even)
+        idata.registerStack()
         idata.registerStack()
         if len(ImagingData) > 1: #multiple planes
             save_path = os.path.join(file_directory, file_name.split('.')[0] + '_z' + str(idata.z_index) + '_reg' + '.tif')

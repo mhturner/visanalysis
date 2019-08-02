@@ -33,6 +33,20 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
 
         self.z_index = z_index
 
+        self.roi = {}
+        self.heat_map = None
+        self.raw_file_name = None
+        self.reg_file_name = None
+        self.raw_series = None
+        self.current_series = None
+        self.registered_series = None
+        self.roi_image = None
+        self.roi_response = None
+        self.roi_mask = None
+        self.roi_path = None
+        self.response_timing = None
+        self.stimulus_timing = None
+
         # Get metadata INCLUDING VOLUME Info
         self.metadata = self.__getPVMetadata()
 
@@ -282,7 +296,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
             metadata['Zdepths'] = []
             for z in range(n_zstacks):
                 if len(root.findall('Sequence')[0].findall('Frame')[5].find('PVStateShard').findall('PVStateValue')) == 3: # Zdepth is specified
-                    metadata['Zdepths'].append(root.findall('Sequence')[0].findall('Frame')[0].find('PVStateShard').findall('PVStateValue')[2].findall('SubindexedValues')[2].findall('SubindexedValue')[1].get('value')
+                    metadata['Zdepths'].append(root.findall('Sequence')[0].findall('Frame')[0].find('PVStateShard').findall('PVStateValue')[2].findall('SubindexedValues')[2].findall('SubindexedValue')[1].get('value'))
                 else: # Zdepth is not specified... happens for the last index??
                     metadata['Zdepths'].append([pvsv.findall('SubindexedValues')[2] for pvsv in root.find('PVStateShard').findall('PVStateValue') if ('key', 'positionCurrent') in pvsv.items()][0].findall('SubindexedValue')[1].get('value'))
 

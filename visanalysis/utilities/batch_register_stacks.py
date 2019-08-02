@@ -17,6 +17,9 @@ from PyQt5.QtWidgets import (QFileDialog, QWidget, QApplication)
 
 from visanalysis import imaging_data
 from visanalysis.utilities.create_bruker_objects_from_zstack import create_bruker_objects_from_zstack
+from visanalysis.utilities.take_every_other_frame import take_every_other_frame
+
+take_even=True
 
 def main():
     file_directory = str(QFileDialog.getExistingDirectory(QWidget(),"Select Directory"))
@@ -36,6 +39,8 @@ def main():
         for idata in ImagingData:
             idata.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
             idata.loadImageSeries()
+            if take_even is not None:
+                idata = take_every_other_frame(idata, take_even=take_even)
             idata.registerStack()
             if len(ImagingData) > 1: #multiple planes
                 save_path = os.path.join(file_directory, file_name.split('.')[0] + '_z' + str(idata.z_index) + '_reg' + '.tif')
