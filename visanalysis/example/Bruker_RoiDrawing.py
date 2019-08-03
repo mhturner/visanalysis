@@ -1,12 +1,14 @@
 
 from visanalysis.imaging_data import BrukerData
+from visanalysis.utilities.take_every_other_frame import take_every_other_frame
 
-file_name = '2019-07-12'
-series_number = 1 #index from 1
-z_index = 4 #index from 0
+file_name = '2019-07-16'
+z_index = 0 #index from 0
+series_number = 7 #index from 1
 
 ImagingData = BrukerData.ImagingDataObject(file_name, series_number, load_rois=False, z_index=z_index)
 ImagingData.loadImageSeries()
+ImagingData = take_every_other_frame(ImagingData, take_downward=True)
 
 # %% Choose Rois
 from visanalysis import region
