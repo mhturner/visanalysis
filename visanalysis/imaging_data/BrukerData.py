@@ -169,7 +169,10 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
             if self.z_index is None: # single plane
                 self.raw_series = io.imread(self.raw_file_name)
             else: # multi plane
-                self.raw_series = io.imread(self.raw_file_name)[:,self.z_index,:,:]
+                if self.metadata['bidirectionalZ']:
+                    self.raw_series = io.imread(self.raw_file_name)[:,self.z_index,:,:]
+                else:
+                    self.raw_series = io.imread(self.raw_file_name)[:,:,:,self.z_index]
             self.current_series = self.raw_series
         else:
             self.raw_series = None
@@ -191,6 +194,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         """
         reference_time_frame = 1 #sec, first frames to use as reference for registration
         reference_frame = np.where(self.response_timing['stack_times'] > reference_time_frame)[0][0]
+
 
         reference_image = np.squeeze(np.mean(self.raw_series[0:reference_frame,:,:], axis = 0))
         register = CrossCorr()
@@ -272,6 +276,11 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         root = metaData.getroot()
 
         metadata = {}
+
+        tframes = root.findall('Sequence')
+        metadata['n_tframes'] = len(tframes)
+        metadata['n_zstacks'] = len(tframes[0].findall('Frame'))
+
         for child in list(root.find('PVStateShard')):
             if child.get('value') is None:
                 for subchild in list(child):
@@ -291,14 +300,17 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
 
         metadata['is_volume'] = 'ZSeries' in root.find('Sequence').get('type')
         if metadata['is_volume']:
-            metadata['bidirectionalZ'] = bool(root.find('Sequence').get('bidirectionalZ'))
-
+            metadata['bidirectionalZ'] = root.find('Sequence').get('bidirectionalZ') == "True"
             metadata['Zdepths'] = []
-            for z in range(n_zstacks):
-                if len(root.findall('Sequence')[0].findall('Frame')[5].find('PVStateShard').findall('PVStateValue')) == 3: # Zdepth is specified
-                    metadata['Zdepths'].append(root.findall('Sequence')[0].findall('Frame')[0].find('PVStateShard').findall('PVStateValue')[2].findall('SubindexedValues')[2].findall('SubindexedValue')[1].get('value'))
+            for z in range(metadata['n_zstacks']):
+                #print(len(root.findall('Sequence')[0].findall('Frame')))
+                sq_fr_pvss = root.findall('Sequence')[0].findall('Frame')[z].find('PVStateShard')
+                positionZ = [x.findall('SubindexedValues')[2].findall('SubindexedValue')[1].get('value') for x in sq_fr_pvss.findall('PVStateValue') if x.get('key') == 'positionCurrent']
+
+                if len(positionZ) == 1: # Zdepth is specified
+                    metadata['Zdepths'].append(float(positionZ[0]))
                 else: # Zdepth is not specified... happens for the last index??
-                    metadata['Zdepths'].append([pvsv.findall('SubindexedValues')[2] for pvsv in root.find('PVStateShard').findall('PVStateValue') if ('key', 'positionCurrent') in pvsv.items()][0].findall('SubindexedValue')[1].get('value'))
+                    metadata['Zdepths'].append(float([pvsv.findall('SubindexedValues')[2] for pvsv in root.find('PVStateShard').findall('PVStateValue') if ('key', 'positionCurrent') in pvsv.items()][0].findall('SubindexedValue')[1].get('value')))
 
         return metadata
 

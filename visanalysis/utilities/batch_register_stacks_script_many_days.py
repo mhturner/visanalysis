@@ -8,21 +8,23 @@ it's doing and back your raw data up on the server before using this
 
 @author: mhturner
 """
-import sys
 import os
 import fnmatch
 import re
 from tifffile import imsave
-from PyQt5.QtWidgets import (QFileDialog, QWidget, QApplication)
 
 from visanalysis import imaging_data
 from visanalysis.utilities.create_bruker_objects_from_zstack import create_bruker_objects_from_zstack
 from visanalysis.utilities.take_every_other_frame import take_every_other_frame
 
+#dates = ['20190710','20190712','20190715','20190716','20190722','20190723']
+#            x           x          x       x   ?? (epochs not matched)  x
+dates = ['20190730']
 take_downward=True
 
-def main():
-    file_directory = str(QFileDialog.getExistingDirectory(QWidget(),"Select Directory"))
+
+for date in dates:
+    file_directory = '/home/clandinin/Desktop/heather_data/' + date
 
     # get files of unregistered time series in current working directory
     file_names = sorted(fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif'))
@@ -53,10 +55,3 @@ def main():
             print('Saved: ' + save_path)
 
         #os.remove(os.path.join(file_directory, file_name))
-
-    sys.exit()
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = main()
-    sys.exit(app.exec_())

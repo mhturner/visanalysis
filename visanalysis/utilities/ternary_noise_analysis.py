@@ -147,6 +147,22 @@ class TernaryNoiseAnalysis():
 
         return
 
+    def plot_avg_spatial_rf(self, roi_set='column', roi_number=0, start_idx=0, end_idx=1, fn=None):
+        mean_rf = np.mean(self.strf[roi_set][roi_number][:,:,start_idx:end_idx],axis=2)
+
+        fig = plt.figure(figsize=(10,8))
+        plt.imshow(mean_rf, cmap='inferno', extent=[0,360,180,0])
+        plt.xlabel("degrees")
+        plt.ylabel("degrees")
+        plt.colorbar()
+
+        if fn is not None:
+            fig.savefig(fn)
+        return
+
+    def plot_spatiotemporal_receptive_field(self, roi_set='column', roi_number=0, fn=None):
+        print('hello')
+
     def plot_peak_spatial_receptive_field(self, roi_set='column', roi_number=0, fn=None):
 
         assert roi_set in self.strf.keys()
@@ -157,13 +173,19 @@ class TernaryNoiseAnalysis():
         peak_idx = np.unravel_index(strf.argmax(), strf.shape)
         peak_time = peak_idx[2]
 
-        # get average peak from 3 values around peak_time
-        mean_rf = np.mean(self.strf[roi_set][roi_number][:,:,peak_time-1:peak_time+2],axis=2)
+        # get average peak from 3 values-ish around peak_time
+        avg_start = peak_time-1 if peak_time > 0 else peak_time
+        avg_end = peak_time + 2 if peak_time < self.strf[roi_set][roi_number].shape[2]-3 else self.strf[roi_set][roi_number].shape[2] -1
+
+        print ("averaged over " + str(avg_end - avg_start) + " frames of strf.")
+
+        mean_rf = np.mean(self.strf[roi_set][roi_number][:,:,avg_start:avg_end],axis=2)
 
         fig = plt.figure(figsize=(10,8))
         plt.imshow(mean_rf, cmap='inferno', extent=[0,360,180,0])
         plt.xlabel("degrees")
         plt.ylabel("degrees")
+        plt.colorbar()
 
         if fn is not None:
             fig.savefig(fn)
@@ -185,7 +207,7 @@ class TernaryNoiseAnalysis():
 
         filter_time = -np.flip(np.arange(0, len(mean_rf)) * self.seconds_per_unit_time, axis=0)
 
-        fig = plt.figure(figsize=(10,8))
+        fig = plt.figure(figsize=(10,6))
         plt.plot(filter_time, mean_rf)
         plt.xlabel("seconds")
         plt.ylabel("a.u.")

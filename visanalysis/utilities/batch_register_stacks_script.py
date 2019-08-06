@@ -15,15 +15,16 @@ from tifffile import imsave
 
 from visanalysis import imaging_data
 from visanalysis.utilities.create_bruker_objects_from_zstack import create_bruker_objects_from_zstack
+from visanalysis.utilities.take_every_other_frame import take_every_other_frame
 
-file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190613'
-file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190712'
-#file_directory = '/Users/minseung/Desktop/0709 testing'
+#file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190613'
+#file_directory = '/Users/minseung/Google Drive/School/Stanford/Clandinin Lab/Data/liveimaging/Heather/20190712'
+file_directory = '/home/clandinin/Desktop/heather_data/20190710'
 
-take_even=True
+take_downward=True
 
 # get files of unregistered time series in current working directory
-file_names = fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif')
+file_names = sorted(fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif'))
 
 for file_name in file_names:
     print(file_name)
@@ -37,9 +38,11 @@ for file_name in file_names:
     for idata in ImagingData:
         idata.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
         idata.loadImageSeries()
-        if take_even is not None:
-            idata = take_every_other_frame(idata, take_even=take_even)
-        idata.registerStack()
+        print ('bidirectionalZ = ' + str(idata.metadata['bidirectionalZ']))
+        if idata.metadata['bidirectionalZ'] and take_downward is not None:
+            down_or_up = "downward" if take_downward else "upward"
+            print ('Taking ' + down_or_up + ' frames only.')
+            idata = take_every_other_frame(idata, take_downward=take_downward)
         idata.registerStack()
         if len(ImagingData) > 1: #multiple planes
             save_path = os.path.join(file_directory, file_name.split('.')[0] + '_z' + str(idata.z_index) + '_reg' + '.tif')
