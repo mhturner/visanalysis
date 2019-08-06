@@ -24,7 +24,11 @@ file_directory = '/home/clandinin/Desktop/heather_data/20190710'
 take_downward=True
 
 # get files of unregistered time series in current working directory
+<<<<<<< HEAD
 file_names = sorted(fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif'))
+=======
+file_names = [sorted(fnmatch.filter(os.listdir(file_directory),'TSeries-*[0-9].tif'))[-1]]
+>>>>>>> ad2161d13d0ca53081f5047dc022f3b3a9ba17ce
 
 for file_name in file_names:
     print(file_name)

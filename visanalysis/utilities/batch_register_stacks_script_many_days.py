@@ -18,8 +18,13 @@ from visanalysis.utilities.create_bruker_objects_from_zstack import create_bruke
 from visanalysis.utilities.take_every_other_frame import take_every_other_frame
 
 #dates = ['20190710','20190712','20190715','20190716','20190722','20190723']
+<<<<<<< HEAD
 #            x           x          x       x   ?? (epochs not matched)  x
 dates = ['20190730']
+=======
+#        F8(memory)      x          x          x   ?? (epochs not matched)           F8
+dates = ['20190712']
+>>>>>>> ad2161d13d0ca53081f5047dc022f3b3a9ba17ce
 take_downward=True
 
 

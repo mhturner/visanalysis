@@ -20,6 +20,7 @@ def take_every_other_frame(imaging_data, take_downward=True):
     imaging_data.response_timing['frame_times'] = new_frame_times
     imaging_data.response_timing['sample_period'] = new_sample_period
 
+<<<<<<< HEAD
     if imaging_data.raw_series is not None:
         imaging_data.raw_series = imaging_data.raw_series[start_idx::2,]
     # If registered_series is None, then current might be already cut in half...
@@ -27,4 +28,9 @@ def take_every_other_frame(imaging_data, take_downward=True):
         imaging_data.current_series = imaging_data.current_series[start_idx::2,]
         imaging_data.roi_image = np.squeeze(np.mean(imaging_data.current_series, axis = 0))
 
+=======
+    imaging_data.raw_series = imaging_data.raw_series[start_idx::2,]
+    imaging_data.current_series = imaging_data.current_series[start_idx::2,]
+    imaging_data.roi_image = np.squeeze(np.mean(imaging_data.current_series, axis = 0))
+>>>>>>> ad2161d13d0ca53081f5047dc022f3b3a9ba17ce
     return imaging_data
