@@ -1,5 +1,5 @@
 from visanalysis.imaging_data import BrukerData
-from visanalysis.utilities.ternary_noise_analysis import TernaryNoiseAnalysis
+from visanalysis.analysis import TernaryNoiseAnalysis
 
 file_name = '2019-06-19'
 series_number = 5 #index from 1

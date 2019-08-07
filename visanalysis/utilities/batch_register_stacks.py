@@ -16,8 +16,8 @@ from tifffile import imsave
 from PyQt5.QtWidgets import (QFileDialog, QWidget, QApplication)
 
 from visanalysis import imaging_data
-from visanalysis.utilities.create_bruker_objects_from_zstack import create_bruker_objects_from_zstack
-from visanalysis.utilities.take_every_other_frame import take_every_other_frame
+from visanalysis.volume_tools import create_bruker_objects_from_zstack
+from visanalysis.volume_tools import take_every_other_frame
 
 take_downward=True
 

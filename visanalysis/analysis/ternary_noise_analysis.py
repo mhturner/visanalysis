@@ -5,15 +5,12 @@
 ##############################################
 
 from visanalysis import imaging_data
+from visanalysis.analysis import utils
+
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 20})
-
-def getLinearFilterByFFT(stimulus, response, filter_len):
-    filter_fft = np.fft.fft(response) * np.conj(np.fft.fft(stimulus))
-    filt = np.real(np.fft.ifft(filter_fft))[0:filter_len]
-    return filt
 
 class TernaryNoiseAnalysis():
     def __init__(self, fn='2019-06-19', series_number=5, z_index=None):
@@ -96,7 +93,7 @@ class TernaryNoiseAnalysis():
     def get_roi_set_names(self):
         return self.imaging_data.roi.keys()
 
-    def compute_strf(self, roi_set='column', roi_number=0, filter_len=20, method=getLinearFilterByFFT):
+    def compute_strf(self, roi_set='column', roi_number=0, filter_len=20, method=utils.getLinearFilterByFFT):
         assert roi_set in self.get_roi_set_names()
         assert self.ternary_noise is not None
 
@@ -137,7 +134,7 @@ class TernaryNoiseAnalysis():
         for phi in tqdm(range(self.num_phi)):
             for theta in range(self.num_theta):
                 stimulus = self.ternary_noise[phi,theta,:]
-                strf[phi,theta,:] = getLinearFilterByFFT(stimulus, response, filter_len)
+                strf[phi,theta,:] = utils.getLinearFilterByFFT(stimulus, response, filter_len)
 
         #if dictionary for roi_set not existed then it will create an empty dictionary.
         if roi_set not in self.strf.keys():
