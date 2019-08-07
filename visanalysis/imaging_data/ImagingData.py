@@ -88,6 +88,7 @@ class ImagingDataObject():
                 cut_inds = np.append(cut_inds,idx)
                 continue
             if idx is not 0:
+                # number of frames are fewer than average number of frames... should not throw away
                 if len(stack_inds) < epoch_frames: #missed images for the end of the stimulus
                     cut_inds = np.append(cut_inds,idx)
                     continue
