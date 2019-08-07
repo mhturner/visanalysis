@@ -22,8 +22,8 @@ def take_every_other_frame(imaging_data, take_downward=True):
 
     if imaging_data.raw_series is not None:
         imaging_data.raw_series = imaging_data.raw_series[start_idx::2,]
-    # If registered_series is None, then current might be already cut in half...
-    if imaging_data.registered_series is None and imaging_data.current_series is not None:
+    # If registered_series is not None, then current might be already cut in half...
+    if imaging_data.registered_series is not None and imaging_data.current_series is not None:
         imaging_data.current_series = imaging_data.current_series[start_idx::2,]
         imaging_data.roi_image = np.squeeze(np.mean(imaging_data.current_series, axis = 0))
 

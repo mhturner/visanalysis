@@ -96,7 +96,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
 
                     new_roi['roi_response'] = np.squeeze(roi_group.get(gr).get("roi_response")[:], axis = 1)
 
-                    time_vector, response_matrix = self.getEpochResponseMatrix(respose_trace = new_roi['roi_response'])
+                    time_vector, response_matrix = self.getEpochResponseMatrix(response_trace = new_roi['roi_response'])
                     new_roi['epoch_response'] = response_matrix
                     new_roi['time_vector'] = time_vector
 

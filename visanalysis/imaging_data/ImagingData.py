@@ -42,7 +42,7 @@ class ImagingDataObject():
     ##############################################################################
     #Functions for computing stimulus timing and stimulus-aligning trial responses
     ##############################################################################
-    def getEpochResponseMatrix(self, respose_trace = None):
+    def getEpochResponseMatrix(self, response_trace = None):
         """
         getEpochReponseMatrix(self, roi_response = None)
             Takes in long stack response traces and splits them up into each stimulus epoch
@@ -52,8 +52,8 @@ class ImagingDataObject():
             response_matrix (ndarray): response for each roi in each epoch.
                 shape = (num rois, num epochs, num frames per epoch)
         """
-        if respose_trace is None:
-            respose_trace = np.vstack(self.roi_response)
+        if response_trace is None:
+            response_trace = np.vstack(self.roi_response)
 
         stimulus_start_times = self.stimulus_timing['stimulus_start_times'] #sec
         stimulus_end_times = self.stimulus_timing['stimulus_end_times'] #sec
@@ -75,7 +75,7 @@ class ImagingDataObject():
         time_vector = np.arange(0,epoch_frames) * sample_period # sec
 
         no_trials = len(epoch_start_times)
-        no_rois = respose_trace.shape[0]
+        no_rois = response_trace.shape[0]
         response_matrix = np.empty(shape=(no_rois, no_trials, epoch_frames), dtype=float)
         response_matrix[:] = np.nan
         cut_inds = np.empty(0, dtype = int)
@@ -84,7 +84,7 @@ class ImagingDataObject():
             if len(stack_inds) == 0: #no imaging acquisitions happened during this epoch presentation
                 cut_inds = np.append(cut_inds,idx)
                 continue
-            if np.any(stack_inds > respose_trace.shape[1]):
+            if np.any(stack_inds > response_trace.shape[1]):
                 cut_inds = np.append(cut_inds,idx)
                 continue
             if idx is not 0:
@@ -92,7 +92,7 @@ class ImagingDataObject():
                     cut_inds = np.append(cut_inds,idx)
                     continue
             #pull out Roi values for these scans. shape of newRespChunk is (nROIs,nScans)
-            new_resp_chunk = respose_trace[:,stack_inds]
+            new_resp_chunk = response_trace[:,stack_inds]
 
             # calculate baseline using pre frames
             baseline = np.mean(new_resp_chunk[:,0:pre_frames], axis = 1, keepdims = True)
