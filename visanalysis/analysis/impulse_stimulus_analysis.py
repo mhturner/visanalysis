@@ -6,9 +6,10 @@
 ##############################################
 
 from visanalysis.imaging_data import BrukerData
+from visanalysis.analysis import utils
+
 import numpy as np
 import math
-import utils
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import h5py
@@ -68,7 +69,9 @@ class ImpulseStimulusAnalysis():
 
     def __get_stim_time_vector(self):
 
-       # 1/ imaging rate to get mean of imaging intervals, divide by oversample rate to represent stimulus well so it doesn't get stretched out when trying to fit into imaging frames
+       # 1/ imaging rate to get mean of imaging intervals, divide by oversample
+       #  rate to represent stimulus well so it doesn't get stretched out
+       #  when trying to fit into imaging frames
         stim_time_diff = (1/ self.imaging_rate) / self.oversample_rate
 
         n_sample = self.imaging_rate * self.get_epoch_duration
@@ -107,11 +110,11 @@ class ImpulseStimulusAnalysis():
     def get_epoch_response(self, roi_set, roi_index):
         return self.get_roi_dict(roi_set)['epoch_response'][roi_index,:,:]
 
-     def get_epoch_response_by_stimulus_type(self, roi_set, roi_index, is_bright=True, is_small=True):
-         epoch_indices = self.get_epoch_indices_by_stimulus_type(is_bright, is_small)
-         epoch_responses = self.get_epoch_response(roi_set, roi_index)
+    def get_epoch_response_by_stimulus_type(self, roi_set, roi_index, is_bright=True, is_small=True):
+        epoch_indices = self.get_epoch_indices_by_stimulus_type(is_bright, is_small)
+        epoch_responses = self.get_epoch_response(roi_set, roi_index)
 
-         return epoch_reponses[epoch_indices,:]
+        return epoch_reponses[epoch_indices,:]
 
 
 
