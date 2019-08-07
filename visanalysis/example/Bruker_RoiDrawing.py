@@ -1,6 +1,6 @@
 
 from visanalysis.imaging_data import BrukerData
-from visanalysis.utilities.take_every_other_frame import take_every_other_frame
+from visanalysis.volume_tools import take_every_other_frame
 
 file_name = '2019-07-23'
 z_index = 0 #index from 0
