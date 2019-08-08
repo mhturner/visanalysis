@@ -15,7 +15,6 @@ from tifffile import imsave
 
 from visanalysis import imaging_data
 from visanalysis.volume_tools import create_bruker_objects_from_zstack
-from visanalysis.volume_tools import take_every_other_frame
 
 #dates = ['20190710','20190712','20190715','20190716','20190722','20190723']
 #            x           x          x       x   ?? (epochs not matched)  x
@@ -42,10 +41,6 @@ for date in dates:
             idata.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
             idata.loadImageSeries()
             print ('bidirectionalZ = ' + str(idata.metadata['bidirectionalZ']))
-            if idata.metadata['bidirectionalZ'] and take_downward is not None:
-                down_or_up = "downward" if take_downward else "upward"
-                print ('Taking ' + down_or_up + ' frames only.')
-                idata = take_every_other_frame(idata, take_downward=take_downward)
             idata.registerStack()
             if len(ImagingData) > 1: #multiple planes
                 save_path = os.path.join(file_directory, file_name.split('.')[0] + '_z' + str(idata.z_index) + '_reg' + '.tif')
