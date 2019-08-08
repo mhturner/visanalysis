@@ -17,6 +17,7 @@ import warnings
 
 from visanalysis import imaging_data
 from visanalysis import plot_tools
+from visanalysis.volume_tools import take_every_other_frame
 
 class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
     def __init__(self, file_name, series_number, load_rois = True, z_index=None):
@@ -55,6 +56,9 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         self.__getStimulusTiming()
         self.__checkEpochNumberCount()
 
+        # If volume and bidirectionalZ, take every other frame
+        if self.metadata['is_volume'] and self.metadata['bidirectionalZ']:
+            self = take_every_other_frame(self, take_downward=True)
 
         if load_rois:
             # Get epoch responses for rois
@@ -188,6 +192,22 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         self.roi_response = []
         self.roi_mask = []
         self.roi_path = []
+
+
+        #### Added for bidirectionalZ, from take every other frame:
+        if self.metadata['is_volume'] and self.metadata['bidirectionalZ']:
+            take_downward = True #supposed to be argument, quick fix 190808 MC
+            is_down = self.metadata['Zdepths'][1] - self.metadata['Zdepths'][1] > 0 # whether the first z scan is downwards
+            take_even = take_downward == is_down
+            start_idx = 0 if take_even else 1
+
+            if self.raw_series is not None:
+                self.raw_series = self.raw_series[start_idx::2,]
+            # If registered_series is not None, then current might be already cut in half...
+            if self.registered_series is None and self.current_series is not None:
+                self.current_series = self.current_series[start_idx::2,]
+                self.roi_image = np.squeeze(np.mean(self.current_series, axis = 0))
+
 
     def registerStack(self):
         """

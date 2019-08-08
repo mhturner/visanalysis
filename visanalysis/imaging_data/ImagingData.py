@@ -101,6 +101,7 @@ class ImagingDataObject():
             new_resp_chunk = (new_resp_chunk - baseline) / baseline;
             response_matrix[:,idx,:] = new_resp_chunk[:,0:epoch_frames]
 
+        print(len(cut_inds))
         response_matrix = np.delete(response_matrix,cut_inds, axis = 1)
         return time_vector, response_matrix
 
@@ -207,7 +208,7 @@ class ImagingDataObject():
                     roi_set_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois').get("z" + str(self.z_index)).get(roi_set_name)
                 else:
                     roi_set_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois').get(roi_set_name)
-                compute_roi_response = False
+                compute_roi_response = True #False, changed on 190808 to refresh every time. Since it's inexpensive most of the times, why not?
 
             # load the roi path  and mask
             self.roi_mask = list(roi_set_group.get("roi_mask")[:]) #load from hdf5 metadata file

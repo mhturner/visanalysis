@@ -1,5 +1,5 @@
 import numpy as np
-from visanalysis.imaging_data.BrukerData import ImagingDataObject
+#from visanalysis.imaging_data.BrukerData import ImagingDataObject
 
 
 def take_every_other_frame(imaging_data, take_downward=True):
@@ -20,11 +20,16 @@ def take_every_other_frame(imaging_data, take_downward=True):
     imaging_data.response_timing['frame_times'] = new_frame_times
     imaging_data.response_timing['sample_period'] = new_sample_period
 
+    '''
     if imaging_data.raw_series is not None:
         imaging_data.raw_series = imaging_data.raw_series[start_idx::2,]
     # If registered_series is not None, then current might be already cut in half...
-    if imaging_data.registered_series is not None and imaging_data.current_series is not None:
+    if imaging_data.registered_series is None and imaging_data.current_series is not None:
         imaging_data.current_series = imaging_data.current_series[start_idx::2,]
         imaging_data.roi_image = np.squeeze(np.mean(imaging_data.current_series, axis = 0))
+    '''
+
+    #for roi_set in imaging_data.roi.keys():
+    #    imaging_data.roi[roi_set]['time_vector'], imaging_data.roi[roi_set]['epoch_response'] = imaging_data.getEpochResponseMatrix(response_trace = imaging_data.roi[roi_set]['roi_response'])
 
     return imaging_data
