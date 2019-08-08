@@ -1,4 +1,3 @@
-
 from visanalysis.imaging_data import BrukerData
 
 file_name = '2019-07-23'
@@ -7,8 +6,6 @@ series_number = 1 #index from 1
 
 ImagingData = BrukerData.ImagingDataObject(file_name, series_number, load_rois=False, z_index=z_index)
 ImagingData.loadImageSeries()
-#if ImagingData.metadata['is_volume'] and ImagingData.metadata['bidirectionalZ']:
-#    ImagingData = take_every_other_frame(ImagingData, take_downward=True)
 
 # %% Choose Rois
 from visanalysis import region

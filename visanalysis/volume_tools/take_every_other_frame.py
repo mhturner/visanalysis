@@ -1,11 +1,7 @@
 import numpy as np
-#from visanalysis.imaging_data.BrukerData import ImagingDataObject
-
 
 def take_every_other_frame(imaging_data, take_downward=True):
-    '''
-    MUST be run before registration, AFTER loadImageSeries()
-    '''
+
     is_down = imaging_data.metadata['Zdepths'][1] - imaging_data.metadata['Zdepths'][1] > 0 # whether the first z scan is downwards
 
     take_even = take_downward == is_down
@@ -20,7 +16,7 @@ def take_every_other_frame(imaging_data, take_downward=True):
     imaging_data.response_timing['frame_times'] = new_frame_times
     imaging_data.response_timing['sample_period'] = new_sample_period
 
-    '''
+    ''' MOVED INTO BrukerData.ImagingDataObject.loadImageSeries
     if imaging_data.raw_series is not None:
         imaging_data.raw_series = imaging_data.raw_series[start_idx::2,]
     # If registered_series is not None, then current might be already cut in half...
