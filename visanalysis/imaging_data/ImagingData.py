@@ -209,7 +209,7 @@ class ImagingDataObject():
             for p_ind, p in enumerate(self.roi_path):
                 current_roi_group.create_dataset("path_vertices_" + str(p_ind), data = p.vertices)
 
-    def loadRois(self, roi_set_name):
+    def loadRois(self, roi_set_name, recompute_roi_response=False):
         print('Loading roi set  {}...'.format(roi_set_name))
         with h5py.File(os.path.join(self.flystim_data_directory, self.file_name) + '.hdf5','r') as experiment_file:
             if 'series' in roi_set_name: #roi set from a different series
@@ -226,7 +226,7 @@ class ImagingDataObject():
                     roi_set_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois').get("z" + str(self.z_index)).get(roi_set_name)
                 else:
                     roi_set_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois').get(roi_set_name)
-                compute_roi_response = True #False, changed on 190808 to refresh every time. Since it's inexpensive most of the times, why not?
+                compute_roi_response = recompute_roi_response #False, changed on 190809 allow refreshing. 
 
             # load the roi path  and mask
             self.roi_mask = list(roi_set_group.get("roi_mask")[:]) #load from hdf5 metadata file
