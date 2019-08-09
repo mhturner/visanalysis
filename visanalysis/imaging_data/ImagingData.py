@@ -80,8 +80,8 @@ class ImagingDataObject():
         epoch_time = 0.99 * np.mean(epoch_end_times - epoch_start_times) #sec
 
         # find how many acquisition frames correspond to pre, stim, tail time
-        epoch_frames = int(epoch_time / sample_period) #in acquisition frames
-        pre_frames = int(pre_time / sample_period) #in acquisition frames
+        epoch_frames = int(epoch_time / sample_period) #in upsampled acquisition frames
+        pre_frames = int(pre_time / self.response_timing['sample_period']) #in acquisition frames
         time_vector = np.arange(0,epoch_frames) * sample_period # sec
 
         no_trials = len(epoch_start_times)
@@ -96,6 +96,8 @@ class ImagingDataObject():
                 continue
             if np.any(stack_inds > response_trace.shape[1]): #too many real frames... shouldn't really happen
                 print ("What's going on??? More real frames than average?")
+                print(response_trace.shape[1])
+                print(stack_inds)
                 cut_inds = np.append(cut_inds,idx)
                 continue
             if sample_rate is None and idx is not 0:
