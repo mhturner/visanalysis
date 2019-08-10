@@ -25,12 +25,13 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
         # Image series is of the format: TSeries-YYYYMMDD-00n
         self.image_series_name = 'TSeries-' + file_name.replace('-','') + '-' + ('00' + str(series_number))[-3:]
 
-        if z_index is None: # If z_index is not provided, check whether it is a volume and split up the z stacks.
-            metaData = ET.parse(os.path.join(self.image_data_directory, self.image_series_name) + '.xml')
-            root = metaData.getroot()
+        # BAD because this sanity check requires xml file...
+        #if z_index is None: # If z_index is not provided, check whether it is a volume and split up the z stacks.
+        #    metaData = ET.parse(os.path.join(self.image_data_directory, self.image_series_name) + '.xml')
+        #    root = metaData.getroot()
 
-            if len(root.findall('Sequence')) > 1: #i.e. multiple z stacks
-                raise(RuntimeError, "Multiple z planes detected! Use utilities.create_bruker_objects_from_zstack to create objs")
+        #    if len(root.findall('Sequence')) > 1: #i.e. multiple z stacks
+        #        raise(RuntimeError, "Multiple z planes detected! Use utilities.create_bruker_objects_from_zstack to create objs")
 
         self.z_index = z_index
         self.sample_rate = sample_rate #rate to which epoch_response_matrix will be upsampled
