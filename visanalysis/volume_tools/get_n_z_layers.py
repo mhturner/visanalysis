@@ -3,6 +3,11 @@ from visanalysis import imaging_data
 import h5py
 import xml.etree.ElementTree as ET
 
+#file_name = '2019-07-16'
+#series_number=5
+#experiment_file = h5py.File(os.path.join(super.flystim_data_directory, super.file_name) + '.hdf5','r')
+#experiment_file.close()
+
 def get_n_z_layers(file_name, series_number):
     super = imaging_data.ImagingData.ImagingDataObject(file_name, series_number)
     with h5py.File(os.path.join(super.flystim_data_directory, super.file_name) + '.hdf5','r') as experiment_file:

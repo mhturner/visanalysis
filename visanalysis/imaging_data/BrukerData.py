@@ -100,7 +100,10 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
 
                     new_roi['roi_path'] = [x[:] for x in new_roi['roi_path']]
 
-                    new_roi['roi_response'] = np.squeeze(roi_group.get(gr).get("roi_response")[:], axis = 1)
+                    if len(roi_group.get(gr).get("roi_response")[:].shape) > 1:
+                        new_roi['roi_response'] = np.squeeze(roi_group.get(gr).get("roi_response")[:], axis = 1)
+                    else:
+                        continue #If roi set is empty, ignore and move on...
 
                     time_vector, response_matrix = self.getEpochResponseMatrix(response_trace = new_roi['roi_response'], sample_rate=self.sample_rate)
                     new_roi['epoch_response'] = response_matrix
