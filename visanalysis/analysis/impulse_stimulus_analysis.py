@@ -19,30 +19,28 @@ plt.rcParams.update({'font.size': 20})
 
 class ImpulseStimulusAnalysis():
 
-    def __init__(self, fn='2019-07-09', series_number=1, oversample_rate=100):
+    def __init__(self, fn='2019-07-09', series_number=1, z_index=0, sample_rate=500):
         # Define the file name and series number you want to use
         self.fn = fn
         self.series_number = series_number
-        #factor with which we oversample the imaging rate
-        self.oversample_rate = oversample_rate
 
-        self.imaging_data = BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True)
+        self.imaging_data = BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, sample_rate=sample_rate)
         # Option to plot individual epoch responses on top of the mean response
 
         some_roi_dict = self.get_roi_dict(self.get_roi_set_names()[0])
       #  self.epoch_response_matrix = self.some_roi_dict['epoch_response']
-        self.n_epochs = self.some_roi_dict['epoch_response'].shape[1] #epoch of stimulus
+        self.n_epochs = some_roi_dict['epoch_response'].shape[1] #epoch of stimulus
        # self.n_rois = self.some_roi_dict['epoch_response'].shape[0]
 
-        some_reponse_time_vector = self.get_response_time_vector(self.get_roi_set_names()[0], 0)
+        some_reponse_time_vector = self.get_response_time_vector(self.get_roi_set_names()[0])
         self.imaging_rate = 1/(np.mean(np.diff(some_reponse_time_vector)))
+        self.n_sample = len(some_reponse_time_vector)
 
         #our frame rate should be similar to imaging rate
         #difference of time points, average, 1/that for rate
        # self.imaging_rate = 1/(np.mean(np.diff(some_roi_dict['time_vector'])))
         self.impulse_stimulus = None
         self.idle_color = None
-        self.imaging_rate = None
         self.stim_duration = None
         self.pre_duration = None
         self.post_duration = None
@@ -64,7 +62,7 @@ class ImpulseStimulusAnalysis():
             self.post_duration = session.attrs['tail_time']
             self.idle_color = session.attrs['idle_color']
         #how long the entire duration
-        self.epoch_duration = pre_duration + stim_duration + post_duration #seconds
+        self.epoch_duration = self.pre_duration + self.stim_duration + self.post_duration #seconds
         return
 
     def __get_stim_time_vector(self):
@@ -72,12 +70,9 @@ class ImpulseStimulusAnalysis():
        # 1/ imaging rate to get mean of imaging intervals, divide by oversample
        #  rate to represent stimulus well so it doesn't get stretched out
        #  when trying to fit into imaging frames
-        stim_time_diff = (1/ self.imaging_rate) / self.oversample_rate
-
-        n_sample = self.imaging_rate * self.get_epoch_duration
-        stimulus = np.zeros(n_sample) + self.idle_color
-        x = stim_time_diff * len(stimulus) + stim_time_diff
-        self.stim_time_vector = np.arange (stim_time_diff, x, stim_time_diff)
+        stim_time_diff = 1 / self.imaging_rate
+        stimulus = np.zeros(self.n_sample) + self.idle_color
+        self.stim_time_vector = np.arange(0, stim_time_diff * len(stimulus), stim_time_diff)
         return
 
     def get_roi_set_names(self):
@@ -90,6 +85,9 @@ class ImpulseStimulusAnalysis():
         return self.imaging_data.roi.get(roi_set)
     # Pull out the time_vector and the epoch_response_matrix from this roi set
 
+    #time at which the images were taken.
+    def get_response_time_vector(self, roi_set):
+        return self.get_roi_dict(roi_set)['time_vector']
 
     def get_epoch_indices_by_stimulus_type(self, is_bright=True, is_small=True):
 
@@ -114,43 +112,28 @@ class ImpulseStimulusAnalysis():
         epoch_indices = self.get_epoch_indices_by_stimulus_type(is_bright, is_small)
         epoch_responses = self.get_epoch_response(roi_set, roi_index)
 
-        return epoch_reponses[epoch_indices,:]
-
-
-
+        return epoch_responses[epoch_indices,:]
 
     def get_epoch_average_response(self, roi_set, roi_index):
+        '''
+        takes average across all stimulus types!!! Warning!
+        '''
         this_roi_epoch_response = self.get_epoch_response(roi_set, roi_index) #go through every roi, every roi has 3 components
         epoch_average = np.mean(this_roi_epoch_response, axis = 0) #mean of this_roi
         return epoch_average
 
     def get_epoch_average_response_by_stimulus_type(self, roi_set, roi_index, is_bright=True, is_small=True):
-        this_roi_average_response = self.get_epoch_average_response(self, roi_set, roi_index)
+        this_roi_average_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright=is_bright, is_small=is_small)
         epoch_average_by_stimulus = np.mean(this_roi_average_response, axis = 0)
         return epoch_average_by_stimulus
-
-        epoch_indices = self.get_epoch_indices_by_stimulus_type(is_bright, is_small)
-
-    def get_oversampled_epoch_average_response(self, roi_set, roi_index):
-        response = np.interp(self.stim_time_vector, self.get_response_time_vector(roi_set, roi_index), self.get_epoch_average_response(roi_set, roi_index)) #xp = time_vector ; yp = epoch_avg
-        return response
-        #!!!!!!!!!!!needs to specify which kind of 4 stimulus before taking average
-
-
-    #time at which the images were taken.
-    def get_response_time_vector(self, roi_set, roi_index):
-        return self.get_roi_dict(roi_set)['time_vector'][roi_index,:,:]
 
     def recover_impulse_stimulus(self, is_bright=True):
         #create some stimulus at this imaging rate, how many frames per second
 
-        #how many samples we will create
-        n_sample = self.imaging_rate * self.epoch_duration
-
         #stimulus
-        stimulus = np.zeros(n_sample) + self.idle_color
-        n_sample_pre = self.pre_duration * self.imaging_rate
-        stimulus[n_sample_pre + 1: n_sample_pre + (self.stim_duration * self.imaging_rate + 1)] = is_bright #1 if bright, 0 if dark
+        stimulus = np.zeros(self.n_sample) + self.idle_color
+        n_sample_pre = int(np.floor(self.pre_duration * self.imaging_rate))
+        stimulus[n_sample_pre + 1: n_sample_pre + (int(np.floor(self.stim_duration * self.imaging_rate)) + 1)] = is_bright #1 if bright, 0 if dark
 
         self.impulse_stimulus = stimulus
 
@@ -164,24 +147,29 @@ class ImpulseStimulusAnalysis():
         #sanity check to test that lengths match
         assert (len(stimulus) == len(self.stim_time_vector))
 
-        plt.plot (stimulus)
+        plt.plot(self.stim_time_vector, stimulus)
         return
     #does NOT matter !!!!! TAKEN ARE OF
 
+    def sec_to_n_frames(self, seconds):
+        return int(np.floor(self.imaging_data.sample_rate * seconds))
 
-
-    def compute_temporal_filter(self, roi_set, roi_index, filter_len, method = utils.getLinearFilterByFFT):
-
+    def compute_temporal_filter(self, filter_len, roi_set, roi_index, is_bright=True, is_small=True, method = utils.getLinearFilterByFFT):
+        '''
+        filter_len is defined in seconds
+        '''
         #filter_len = int(len(self.impulse_stimulus) / 1.5) #what is 1.5??
 
+        n_filter_frames = self.sec_to_n_frames(filter_len)
+
         #time points for filter
-        filter_time = -np.flip (self.stim_time_vector [0:filter_len])
+        filter_time = -np.flip(self.stim_time_vector[0:n_filter_frames])
 
         # Get the filter!
-        filt = method(self.impulse_stimulus, self.get_oversampled_epoch_average_response(roi_set, roi_index), filter_len)
+        filt = method(self.impulse_stimulus, self.get_epoch_average_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small), n_filter_frames)
         filt = np.flip(filt)
 
-        plt.plot (filt)
+        plt.plot(filter_time,filt)
         return filt
 
 
@@ -209,7 +197,7 @@ class ImpulseStimulusAnalysis():
            # ax = fig.add_subplot(1, number_of_rois, roi_index+1) #add an axis object to the figure
 
 #%%
-
+'''
 
         fig = plt.figure() #make a matplotlib figure that we'll add axes to as we go
 
@@ -289,7 +277,7 @@ class ImpulseStimulusAnalysis():
         self.imaging_data.generateRoiMap(roi_set_name, scale_bar_length=20)
 
 
-
+'''
 #%%  COMPARE BIG VS. SMALL IMPULSE SPOTS FOR A SINGLE COLUMN
 
 # Pull out and assign the roi dictionary for the 'column' roi, for each small and large series
