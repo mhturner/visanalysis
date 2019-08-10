@@ -207,7 +207,7 @@ class ImagingDataObject():
             current_roi_group.create_dataset("roi_response", data = self.roi_response)
             current_roi_group.create_dataset("roi_image", data = self.roi_image)
             for p_ind, p in enumerate(self.roi_path):
-                current_roi_group.create_dataset("path_vertices_" + str(p_ind), data = p.vertices)
+                current_roi_group.create_dataset("path_vertices_" + str(p_ind), data = p)
 
     def loadRois(self, roi_set_name, recompute_roi_response=False):
         print('Loading roi set  {}...'.format(roi_set_name))
@@ -226,7 +226,7 @@ class ImagingDataObject():
                     roi_set_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois').get("z" + str(self.z_index)).get(roi_set_name)
                 else:
                     roi_set_group = experiment_file['/epoch_runs'].get(str(self.series_number)).get('rois').get(roi_set_name)
-                compute_roi_response = recompute_roi_response #False, changed on 190809 allow refreshing. 
+                compute_roi_response = recompute_roi_response #False, changed on 190809 allow refreshing.
 
             # load the roi path  and mask
             self.roi_mask = list(roi_set_group.get("roi_mask")[:]) #load from hdf5 metadata file
