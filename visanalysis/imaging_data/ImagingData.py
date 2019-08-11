@@ -42,17 +42,17 @@ class ImagingDataObject():
     ##############################################################################
     #Functions for computing stimulus timing and stimulus-aligning trial responses
     ##############################################################################
-    def getEpochResponseMatrix(self, response_trace = None, sample_rate = None):
+    def getEpochResponseMatrix(self, response_trace = None, upsample_rate = None):
         """
         getEpochReponseMatrix(self, roi_response = None)
             Takes in long stack response traces and splits them up into each stimulus epoch
 
         Input:
             response_trace
-            sample_rate (int): in Hz. If None (default), the average
+            upsample_rate (int): in Hz. If None (default), the average
                 acquisition rate is used without interpolation, assuming every epoch is aligned. This COULD be bad (fake news) with low
                 acquisition rate.
-                If not None, the provided sample_rate is used, and response traces are linearly interpolated at each sample time.
+                If not None, the provided upsample_rate is used, and response traces are linearly interpolated at each sample time.
         Returns:
             time_vector (ndarray): in seconds. Time points of each frame acquisition within each epoch
             response_matrix (ndarray): response for each roi in each epoch.
@@ -70,8 +70,8 @@ class ImagingDataObject():
 
         stack_times = self.response_timing['stack_times'] #sec
 
-        if sample_rate is not None:
-            sample_period = 1 / sample_rate #sec
+        if upsample_rate is not None:
+            sample_period = 1 / upsample_rate #sec
         else:
             sample_period = self.response_timing['sample_period'] #sec
 
@@ -100,7 +100,7 @@ class ImagingDataObject():
                 print(stack_inds)
                 cut_inds = np.append(cut_inds,idx)
                 continue
-            if sample_rate is None and idx is not 0:
+            if upsample_rate is None and idx is not 0:
                 # number of frames are fewer than average number of frames...
                 if len(stack_inds) < epoch_frames: #missed images for the end of the stimulus
                     cut_inds = np.append(cut_inds,idx)
@@ -112,7 +112,7 @@ class ImagingDataObject():
             baseline = np.mean(new_resp_chunk[:,0:pre_frames], axis = 1, keepdims = True)
             # to dF/F
             new_resp_chunk = (new_resp_chunk - baseline) / baseline;
-            if sample_rate is not None:
+            if upsample_rate is not None:
                 epoch_stack_times = stack_times[stack_inds] - epoch_start_times[idx]
                 for roi_idx in range(no_rois):
                     response_matrix[roi_idx,idx,:] = np.interp(time_vector, epoch_stack_times, new_resp_chunk[roi_idx,0:epoch_frames])
