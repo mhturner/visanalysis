@@ -18,7 +18,7 @@ from visanalysis.volume_tools import create_bruker_objects_from_zstack
 
 #dates = ['20190710','20190712','20190715','20190716','20190722','20190723', '20190730','20190805','20190807']
 #            x           x          x          x   ?? (epochs not matched)  x
-dates = ['20190806']#
+dates = ['20190703', '20190705']#
 take_downward=True
 
 
@@ -40,7 +40,8 @@ for date in dates:
         for idata in ImagingData:
             idata.image_series_name = 'TSeries-' + fn.replace('-','') + '-' + ('00' + str(series_number))[-3:]
             idata.loadImageSeries()
-            print ('bidirectionalZ = ' + str(idata.metadata['bidirectionalZ']))
+            if idata.metadata['is_volume']:
+                print ('bidirectionalZ = ' + str(idata.metadata['bidirectionalZ']))
             idata.registerStack()
             if len(ImagingData) > 1: #multiple planes
                 save_path = os.path.join(file_directory, file_name.split('.')[0] + '_z' + str(idata.z_index) + '_reg' + '.tif')
