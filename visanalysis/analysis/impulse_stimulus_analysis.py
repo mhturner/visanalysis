@@ -19,12 +19,12 @@ plt.rcParams.update({'font.size': 20})
 
 class ImpulseStimulusAnalysis():
 
-    def __init__(self, fn='2019-07-09', series_number=1, z_index=0, sample_rate=500):
+    def __init__(self, fn='2019-07-09', series_number=1, z_index=0, upsample_rate=500):
         # Define the file name and series number you want to use
         self.fn = fn
         self.series_number = series_number
 
-        self.imaging_data = BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, sample_rate=sample_rate)
+        self.imaging_data = BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate)
         # Option to plot individual epoch responses on top of the mean response
 
         some_roi_dict = self.get_roi_dict(self.get_roi_set_names()[0])
@@ -152,7 +152,8 @@ class ImpulseStimulusAnalysis():
     #does NOT matter !!!!! TAKEN ARE OF
 
     def sec_to_n_frames(self, seconds):
-        return int(np.floor(self.imaging_data.sample_rate * seconds))
+        sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
+        return int(np.floor(sample_rate * seconds))
 
     def compute_temporal_filter(self, filter_len, roi_set, roi_index, is_bright=True, is_small=True, method = utils.getLinearFilterByFFT):
         '''
