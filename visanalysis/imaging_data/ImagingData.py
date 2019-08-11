@@ -248,6 +248,29 @@ class ImagingDataObject():
 
         print('Roi set {} loaded!'.format(roi_set_name))
 
+    def deleteRois(self, roi_set_name):
+        print('Deleting roi set  {}...'.format(roi_set_name))
+        with h5py.File(os.path.join(self.flystim_data_directory, self.file_name) + '.hdf5','r+') as experiment_file:
+            if 'series' in roi_set_name: #roi set from a different series
+                series_no = roi_set_name.split(':')[0].split('series')[1]
+                roi_name = roi_set_name.split(':')[1]
+                if self.z_index is not None:
+                    del experiment_file['/epoch_runs'][series_no]['rois']["z" + str(self.z_index)][roi_name]
+                else:
+                    del experiment_file['/epoch_runs'][series_no]['rois'][roi_name]
+            else: #from this series
+                if self.z_index is not None:
+                    del experiment_file['/epoch_runs'][str(self.series_number)]['rois']["z" + str(self.z_index)][roi_set_name]
+                else:
+                    del experiment_file['/epoch_runs'][str(self.series_number)]['rois'][roi_set_name]
+
+            # empty the roi path  and mask
+            self.roi_mask = []
+            self.roi_path = []
+
+        print('Roi set {} deleted!'.format(roi_set_name))
+
+
     def getAvailableROIsets(self, get_rois_from_other_series = True):
         with h5py.File(os.path.join(self.flystim_data_directory, self.file_name) + '.hdf5','r+') as experiment_file:
             roi_parent_group = experiment_file['/epoch_runs'].get(str(self.series_number)).require_group('rois')
