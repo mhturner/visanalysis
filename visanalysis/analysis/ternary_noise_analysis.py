@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 20})
 
 class TernaryNoiseAnalysis():
-    def __init__(self, fn='2019-06-19', series_number=5, z_index=None):
+    def __init__(self, fn='2019-06-19', series_number=5, z_index=None, upsample_rate=500):
         self.fn = fn
         self.series_number = series_number
 
-        self.imaging_data = imaging_data.BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index)
+        self.imaging_data = imaging_data.BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate)
 
         self.seconds_per_unit_time = np.mean(np.diff(self.imaging_data.response_timing['stack_times']))
 
@@ -32,6 +32,10 @@ class TernaryNoiseAnalysis():
         self.ternary_noise = None
         self.strf = {}
         return
+
+    def sec_to_n_frames(self, seconds):
+        sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
+        return int(np.floor(sample_rate * seconds))
 
     def get_roi_set_names(self):
         return [*self.imaging_data.roi]
@@ -93,9 +97,11 @@ class TernaryNoiseAnalysis():
     def get_roi_set_names(self):
         return self.imaging_data.roi.keys()
 
-    def compute_strf(self, roi_set='column', roi_number=0, filter_len=20, method=utils.getLinearFilterByFFT):
+    def compute_strf(self, filter_len, roi_set='column', roi_number=0, method=utils.getLinearFilterByFFT):
         assert roi_set in self.get_roi_set_names()
         assert self.ternary_noise is not None
+
+        n_filter_frames = self.sec_to_n_frames(filter_len)
 
         pre_time = self.imaging_data.run_parameters['pre_time'] * 1e3 #msec
         tail_time = self.imaging_data.run_parameters['tail_time'] * 1e3 #msec
@@ -130,11 +136,11 @@ class TernaryNoiseAnalysis():
 
         response = current_response[roi_number,:]
 
-        strf = np.empty((self.num_phi, self.num_theta, filter_len)) # spatiotemporal RF
+        strf = np.empty((self.num_phi, self.num_theta, n_filter_frames)) # spatiotemporal RF
         for phi in tqdm(range(self.num_phi)):
             for theta in range(self.num_theta):
                 stimulus = self.ternary_noise[phi,theta,:]
-                strf[phi,theta,:] = utils.getLinearFilterByFFT(stimulus, response, filter_len)
+                strf[phi,theta,:] = utils.getLinearFilterByFFT(stimulus, response, n_filter_frames)
 
         #if dictionary for roi_set not existed then it will create an empty dictionary.
         if roi_set not in self.strf.keys():
