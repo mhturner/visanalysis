@@ -228,7 +228,7 @@ class ImpulseStimulusAnalysis():
         fig.text(0.5, 0.04, 'time [s]', ha='center')
 
 
-    def recover_impulse_stimulus(self, is_bright=True):
+    def recover_impulse_stimulus(self, is_bright=True, plot=False):
         #create some stimulus at this imaging rate, how many frames per second
 
         #stimulus
@@ -248,7 +248,8 @@ class ImpulseStimulusAnalysis():
         #sanity check to test that lengths match
         assert (len(stimulus) == len(self.stim_time_vector))
 
-        plt.plot(self.stim_time_vector, stimulus)
+        if plot:
+            plt.plot(self.stim_time_vector, stimulus)
         self.impulse_stimulus_recovered = True
         return
     #does NOT matter !!!!! TAKEN ARE OF
@@ -257,7 +258,7 @@ class ImpulseStimulusAnalysis():
         sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
         return int(np.floor(sample_rate * seconds))
 
-    def compute_temporal_filter(self, filter_len, roi_set, roi_index, is_bright=True, is_small=True, method = utils.getLinearFilterByFFT):
+    def compute_temporal_filter(self, filter_len, roi_set, roi_index, is_bright=True, is_small=True, method = utils.getLinearFilterByFFT, plot=False):
         '''
         filter_len is defined in seconds
         '''
@@ -274,7 +275,8 @@ class ImpulseStimulusAnalysis():
         filt = method(self.impulse_stimulus, self.get_epoch_average_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small), n_filter_frames)
         filt = np.flip(filt)
 
-        plt.plot(filter_time,filt)
+        if plot:
+            plt.plot(filter_time,filt)
         return filt, filter_time
 
 
