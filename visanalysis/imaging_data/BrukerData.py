@@ -20,7 +20,7 @@ from visanalysis import plot_tools
 from visanalysis.volume_tools import take_every_other_frame
 
 class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
-    def __init__(self, file_name, series_number, load_rois = True, z_index=None, upsample_rate=None):
+    def __init__(self, file_name, series_number, load_rois = True, z_index=None, upsample_rate=None, upsample_method='bins'):
         super().__init__(file_name, series_number) #call the parent class init
         # Image series is of the format: TSeries-YYYYMMDD-00n
         self.image_series_name = 'TSeries-' + file_name.replace('-','') + '-' + ('00' + str(series_number))[-3:]
@@ -35,6 +35,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
 
         self.z_index = z_index
         self.upsample_rate = upsample_rate #rate to which epoch_response_matrix will be upsampled
+        self.upsample_method = upsample_method #method with which epoch_response_matrix will be upsampled, 'bins' or 'interp'
 
         self.roi = {}
         self.heat_map = None
@@ -105,7 +106,7 @@ class ImagingDataObject(imaging_data.ImagingData.ImagingDataObject):
                     else:
                         continue #If roi set is empty, ignore and move on...
 
-                    time_vector, response_matrix = self.getEpochResponseMatrix(response_trace = new_roi['roi_response'], upsample_rate=self.upsample_rate)
+                    time_vector, response_matrix = self.getEpochResponseMatrix(response_trace = new_roi['roi_response'], upsample_rate=self.upsample_rate, upsample_method=self.upsample_method)
                     new_roi['epoch_response'] = response_matrix
                     new_roi['time_vector'] = time_vector
 

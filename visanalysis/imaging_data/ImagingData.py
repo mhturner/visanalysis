@@ -42,7 +42,7 @@ class ImagingDataObject():
     ##############################################################################
     #Functions for computing stimulus timing and stimulus-aligning trial responses
     ##############################################################################
-    def getEpochResponseMatrix(self, response_trace = None, upsample_rate = None):
+    def getEpochResponseMatrix(self, response_trace = None, upsample_rate = None, upsample_method = 'bins'):
         """
         getEpochReponseMatrix(self, roi_response = None)
             Takes in long stack response traces and splits them up into each stimulus epoch
@@ -53,11 +53,15 @@ class ImagingDataObject():
                 acquisition rate is used without interpolation, assuming every epoch is aligned. This COULD be bad (fake news) with low
                 acquisition rate.
                 If not None, the provided upsample_rate is used, and response traces are linearly interpolated at each sample time.
+            upsample_method (str): "interp" or "bins"
         Returns:
             time_vector (ndarray): in seconds. Time points of each frame acquisition within each epoch
             response_matrix (ndarray): response for each roi in each epoch.
                 shape = (num rois, num epochs, num frames per epoch)
         """
+
+        assert type(upsample_method) == str
+
         if response_trace is None:
             response_trace = np.vstack(self.roi_response)
 
@@ -115,9 +119,35 @@ class ImagingDataObject():
             if upsample_rate is not None:
                 epoch_stack_times = stack_times[stack_inds] - epoch_start_times[idx]
                 for roi_idx in range(no_rois):
-                    response_matrix[roi_idx,idx,:] = np.interp(time_vector, epoch_stack_times, new_resp_chunk[roi_idx,0:epoch_frames])
+                    new_resp_chunk_idx = new_resp_chunk[roi_idx,:]
+                    if "interp" in upsample_method.lower():
+                        response_matrix[roi_idx,idx,:] = np.interp(time_vector, epoch_stack_times, new_resp_chunk_idx)
+                    elif "bin" in upsample_method.lower():
+                        ## make bins then fill in
+                        bins = np.full(epoch_frames, np.nan)
+                        bin_assigns = np.digitize(epoch_stack_times, time_vector[1:], right=True) # 0 bin always empty; use time_vector[1:] to change
+                        #print(len(bin_assigns))
+                        #print(len(new_resp_chunk_idx))
+                        #print (bin_assigns)
+                        for ba in np.unique(bin_assigns):
+                            # take average if there are multiple values in a bin
+                            # shouldn't really happen unless upsample rate is lower than any instantaneous sample rate
+                            bins[ba] = np.mean(new_resp_chunk_idx[bin_assigns == ba])
+                        ### Alternative approach, should be faster but harder to read
+                        # # assume that epoch_stack_times are sorted, and thus bin_assigns as well
+                        # diffs = np.append(np.diff(bin_assigns), 1)
+                        # prev_d = 0
+                        # for d in np.where(diffs != 0)[0]:
+                        #     bins[bin_assigns[d]] = np.mean(responses[prev_d:d+1])
+                        #     prev_d = d+1
+                        response_matrix[roi_idx,idx,:] = bins
+
+                    else:
+                        raise ValueError("upsample_method must be either 'interp' or 'bins'")
             else:
-                response_matrix[:,idx,:] = new_resp_chunk[:,0:epoch_frames]
+                # Not really sure what 0:epoch_frames is doing...
+                #response_matrix[:,idx,:] = new_resp_chunk[:,0:epoch_frames]
+                response_matrix[:,idx,:] = new_resp_chunk
 
         print(str(len(cut_inds)) + " epochs cut from epoch_response")
         response_matrix = np.delete(response_matrix,cut_inds, axis = 1)

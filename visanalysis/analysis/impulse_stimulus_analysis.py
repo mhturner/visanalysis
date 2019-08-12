@@ -19,12 +19,12 @@ plt.rcParams.update({'font.size': 20})
 
 class ImpulseStimulusAnalysis():
 
-    def __init__(self, fn='2019-07-09', series_number=1, z_index=0, upsample_rate=500):
+    def __init__(self, fn='2019-07-09', series_number=1, z_index=0, upsample_rate=500, upsample_method='bins'):
         # Define the file name and series number you want to use
         self.fn = fn
         self.series_number = series_number
 
-        self.imaging_data = BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate)
+        self.imaging_data = BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate, upsample_method=upsample_method)
         # Option to plot individual epoch responses on top of the mean response
 
         some_roi_dict = self.get_roi_dict(self.get_roi_set_names()[0])
@@ -118,12 +118,12 @@ class ImpulseStimulusAnalysis():
         takes average across all stimulus types!!! Warning!
         '''
         this_roi_epoch_response = self.get_epoch_response(roi_set, roi_index) #go through every roi, every roi has 3 components
-        epoch_average = np.mean(this_roi_epoch_response, axis = 0) #mean of this_roi
+        epoch_average = np.nanmean(this_roi_epoch_response, axis = 0) #mean of this_roi
         return epoch_average
 
     def get_epoch_average_response_by_stimulus_type(self, roi_set, roi_index, is_bright=True, is_small=True):
         this_roi_average_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright=is_bright, is_small=is_small)
-        epoch_average_by_stimulus = np.mean(this_roi_average_response, axis = 0)
+        epoch_average_by_stimulus = np.nanmean(this_roi_average_response, axis = 0)
         return epoch_average_by_stimulus
 
     def plot_individual_traces_by_stimulus_type(self, roi_set='column', is_bright=True, is_small=True, n_traces=-1):
@@ -153,7 +153,7 @@ class ImpulseStimulusAnalysis():
 
         for roi_index in range (n_rois):
             epoch_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small)
-            trial_average = np.mean(epoch_response, axis = 0) #mean of every roi
+            trial_average = np.nanmean(epoch_response, axis = 0) #mean of every roi
 
             if roi_index == 0:
                 ax = fig.add_subplot(1, n_rois, roi_index+1) #add an axis object to the figure
@@ -172,7 +172,7 @@ class ImpulseStimulusAnalysis():
             #ax.set_ylim([min_y,max_y]) #sets the y axis limits for the plot
 
         #this_roi = epoch_response_matrix[roi_index,:,:] #every roi
-            trial_std = np.std(epoch_response,0) #std of every roi
+            trial_std = np.nanstd(epoch_response,0) #std of every roi
             n = epoch_response.shape[0] #number of trials
             trial_error = (trial_std/math.sqrt(n))
 
@@ -189,7 +189,8 @@ class ImpulseStimulusAnalysis():
 
         for roi_index in range (n_rois):
             epoch_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small)
-            trial_average = np.mean(epoch_response, axis = 0) #mean of every roi
+            trial_average = np.nanmean(epoch_response, axis = 0) #mean of every roi
+            trial_average = self.get_epoch_average_response_by_stimulus_type(roi_set,roi_index,is_bright,is_small)
 
             if roi_index == 0:
                 ax = fig.add_subplot(2, n_rois, roi_index+1) #add an axis object to the figure
@@ -202,7 +203,7 @@ class ImpulseStimulusAnalysis():
 
             ax.plot (response_time_vector, trial_average, color = self.imaging_data.colors[roi_index])
 
-            trial_std = np.std(epoch_response,0) #std of every roi
+            trial_std = np.nanstd(epoch_response,0) #std of every roi
             n = epoch_response.shape[0] #number of trials
             trial_error = (trial_std/math.sqrt(n))
             #plot the error snake around top of the trial average
