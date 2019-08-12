@@ -47,6 +47,8 @@ class ImpulseStimulusAnalysis():
         self.epoch_duration = None
         self.stim_time_vector = None
 
+        self.impulse_stimulus_recovered = False
+
         self.__get_epoch_period_durations()
         self.__get_stim_time_vector()
 
@@ -124,6 +126,108 @@ class ImpulseStimulusAnalysis():
         epoch_average_by_stimulus = np.mean(this_roi_average_response, axis = 0)
         return epoch_average_by_stimulus
 
+    def plot_individual_traces_by_stimulus_type(self, roi_set='column', is_bright=True, is_small=True, n_traces=-1):
+        fig = plt.figure(figsize=(10,8)) #make a matplotlib figure that we'll add axes to as we go
+
+        n_rois = self.get_n_roi_in_roi_set(roi_set)
+        for roi_index in range(n_rois): #for-loop over all the rois in this roi set
+
+            if roi_index == 0:
+                ax = fig.add_subplot(1, n_rois, roi_index+1) #add an axis object to the figure
+            else:
+                ax = fig.add_subplot(1, n_rois, roi_index+1, sharey = ax) #add an axis object to the figure
+
+            epoch_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small)
+            #Plot individual traces from current_epoch_response matrix vs. cu5rrent_time vector
+            if n_traces == -1:
+                n_traces = epoch_response.shape[0]
+            trace_indices = np.random.choice(np.arange(epoch_response.shape[0]), size=n_traces, replace=False)
+            ax.plot(self.get_response_time_vector(roi_set),  epoch_response[trace_indices].T)
+
+    def plot_average_traces_by_stimulus_type(self, roi_set='column', is_bright=True, is_small=True, plot_individual_traces=True):
+        fig = plt.figure(figsize=(10,8)) #make a matplotlib figure that we'll add axes to as we go
+
+        n_rois = self.get_n_roi_in_roi_set(roi_set)
+
+        response_time_vector = self.get_response_time_vector(roi_set)
+
+        for roi_index in range (n_rois):
+            epoch_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small)
+            trial_average = np.mean(epoch_response, axis = 0) #mean of every roi
+
+            if roi_index == 0:
+                ax = fig.add_subplot(1, n_rois, roi_index+1) #add an axis object to the figure
+            else:
+                ax = fig.add_subplot(1, n_rois, roi_index+1, sharey = ax) #add an axis object to the figure
+
+            #Plot individual traces from current_epoch_response matrix vs. current_time vector
+            if plot_individual_traces:
+                ax.plot(response_time_vector, epoch_response.T, color = 'k', alpha = 0.1)
+
+            ax.plot (response_time_vector, trial_average, color = self.imaging_data.colors[roi_index])
+
+            #plt.title("Trial average for ROI " + str(roi_index+1))
+            ax.set_title ("roi " + str(roi_index+1))
+
+            #ax.set_ylim([min_y,max_y]) #sets the y axis limits for the plot
+
+        #this_roi = epoch_response_matrix[roi_index,:,:] #every roi
+            trial_std = np.std(epoch_response,0) #std of every roi
+            n = epoch_response.shape[0] #number of trials
+            trial_error = (trial_std/math.sqrt(n))
+
+            #plot the error snake around top of the trial average
+            ax.fill_between(response_time_vector, trial_average - trial_error, trial_average + trial_error, alpha = 0.5, color = self.imaging_data.colors[roi_index])
+
+
+    def plot_average_traces_and_filters_by_stimulus_type(self, roi_set='column', is_bright=True, is_small=True, plot_individual_traces=True, filter_len=0.5):
+        fig = plt.figure(figsize=(10,8)) #make a matplotlib figure that we'll add axes to as we go
+
+        n_rois = self.get_n_roi_in_roi_set(roi_set)
+
+        response_time_vector = self.get_response_time_vector(roi_set)
+
+        for roi_index in range (n_rois):
+            epoch_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small)
+            trial_average = np.mean(epoch_response, axis = 0) #mean of every roi
+
+            if roi_index == 0:
+                ax = fig.add_subplot(2, n_rois, roi_index+1) #add an axis object to the figure
+            else:
+                ax = fig.add_subplot(2, n_rois, roi_index+1, sharey = ax) #add an axis object to the figure
+
+            #Plot individual traces from current_epoch_response matrix vs. current_time vector
+            if plot_individual_traces:
+                ax.plot(response_time_vector, epoch_response.T, color = 'k', alpha = 0.1)
+
+            ax.plot (response_time_vector, trial_average, color = self.imaging_data.colors[roi_index])
+
+            trial_std = np.std(epoch_response,0) #std of every roi
+            n = epoch_response.shape[0] #number of trials
+            trial_error = (trial_std/math.sqrt(n))
+            #plot the error snake around top of the trial average
+            ax.fill_between(response_time_vector, trial_average - trial_error, trial_average + trial_error, alpha = 0.5, color = self.imaging_data.colors[roi_index])
+
+            ax.set_title ("roi " + str(roi_index+1))
+            if roi_index == 0:
+                ax.set_ylabel ("dF/F")
+
+            ### TODO:Call temporal filter code to compute filter for each roi_index
+            filter, filter_time = self.compute_temporal_filter(filter_len, roi_set, roi_index, is_bright, is_small)
+
+            if roi_index == 0:
+                ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1) #add an axis object to the figure
+            else:
+                ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1, sharey = ax2) #add an axis object to the figure
+
+            ax2.plot(filter_time, filter, color = self.imaging_data.colors[roi_index])
+
+            if roi_index == 0:
+                ax2.set_ylabel ("a.u.")
+
+        fig.text(0.5, 0.04, 'time [s]', ha='center')
+
+
     def recover_impulse_stimulus(self, is_bright=True):
         #create some stimulus at this imaging rate, how many frames per second
 
@@ -145,6 +249,7 @@ class ImpulseStimulusAnalysis():
         assert (len(stimulus) == len(self.stim_time_vector))
 
         plt.plot(self.stim_time_vector, stimulus)
+        self.impulse_stimulus_recovered = True
         return
     #does NOT matter !!!!! TAKEN ARE OF
 
@@ -157,6 +262,8 @@ class ImpulseStimulusAnalysis():
         filter_len is defined in seconds
         '''
         #filter_len = int(len(self.impulse_stimulus) / 1.5) #what is 1.5??
+        if not self.impulse_stimulus_recovered:
+            self.recover_impulse_stimulus(is_bright)
 
         n_filter_frames = self.sec_to_n_frames(filter_len)
 
@@ -168,7 +275,7 @@ class ImpulseStimulusAnalysis():
         filt = np.flip(filt)
 
         plt.plot(filter_time,filt)
-        return filt
+        return filt, filter_time
 
 
 #%%
