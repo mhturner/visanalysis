@@ -37,7 +37,7 @@ class TernaryNoiseAnalysis():
     def save_stimulus_tiff(self, save_path):
         if self.ternary_noise is None:
             self.recover_ternary_noise_stimulus()
-        imsave(save_path, self.ternary_noise)
+        imsave(save_path, np.moveaxis((self.ternary_noise*255).astype(np.int16), 2, 0))
 
     def sec_to_n_frames(self, seconds):
         sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
