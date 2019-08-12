@@ -219,7 +219,7 @@ class ImpulseStimulusAnalysis():
             if roi_index == 0:
                 ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1) #add an axis object to the figure
             else:
-                ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1, sharey = ax2) #add an axis object to the figure
+                ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1)#, sharey = ax2) #add an axis object to the figure
 
             ax2.plot(filter_time, filter, color = self.imaging_data.colors[roi_index])
 
