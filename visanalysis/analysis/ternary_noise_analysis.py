@@ -9,15 +9,16 @@ from visanalysis.analysis import utils
 
 import numpy as np
 from tqdm import tqdm
+from tifffile import imsave
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 20})
 
 class TernaryNoiseAnalysis():
-    def __init__(self, fn='2019-06-19', series_number=5, z_index=None, upsample_rate=500):
+    def __init__(self, fn='2019-06-19', series_number=5, z_index=None, upsample_rate=500, upsample_method='bins'):
         self.fn = fn
         self.series_number = series_number
 
-        self.imaging_data = imaging_data.BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate)
+        self.imaging_data = imaging_data.BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate, upsample_method=upsample_method)
 
         self.seconds_per_unit_time = np.mean(np.diff(self.imaging_data.response_timing['stack_times']))
 
@@ -32,6 +33,11 @@ class TernaryNoiseAnalysis():
         self.ternary_noise = None
         self.strf = {}
         return
+
+    def save_stimulus_tiff(self, save_path):
+        if self.ternary_noise is None:
+            self.recover_ternary_noise_stimulus()
+        imsave(save_path, self.ternary_noise)
 
     def sec_to_n_frames(self, seconds):
         sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
@@ -116,7 +122,7 @@ class TernaryNoiseAnalysis():
         pre_inds = np.where(np.logical_and(\
                     self.imaging_data.response_timing['stack_times'] < \
                     pre_end,self.imaging_data.response_timing['stack_times'] >= pre_start))[0]
-        baseline = np.mean(raw_response[:,pre_inds],axis = 1).reshape((n_rois,-1))
+        baseline = np.nanmean(raw_response[:,pre_inds],axis = 1).reshape((n_rois,-1))
         current_response = (raw_response-baseline) / baseline #calculate dF/F
 
         #Recalcuate baseline for points within epoch based on each epochs pre-time
@@ -126,7 +132,7 @@ class TernaryNoiseAnalysis():
             epoch_end = epoch_start + pre_time + stim_time + tail_time
             pre_inds = np.where(np.logical_and(self.imaging_data.response_timing['stack_times'] < stimulus_start,
                                    self.imaging_data.response_timing['stack_times'] >= epoch_start))[0]
-            baseline = np.mean(raw_response[:,pre_inds], axis = 1).reshape((n_rois,-1))
+            baseline = np.nanmean(raw_response[:,pre_inds], axis = 1).reshape((n_rois,-1))
 
             epoch_inds = np.where(np.logical_and(self.imaging_data.response_timing['stack_times'] < epoch_end,
                                    self.imaging_data.response_timing['stack_times'] >= epoch_start))[0]
