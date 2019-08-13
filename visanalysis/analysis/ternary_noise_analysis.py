@@ -10,6 +10,7 @@ from visanalysis.analysis import utils
 import numpy as np
 from tqdm import tqdm
 from tifffile import imsave
+from scipy.ndimage.filters import gaussian_filter
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 20})
 
@@ -180,11 +181,50 @@ class TernaryNoiseAnalysis():
 
     def find_peak_in_rf(self, roi_set='column', roi_number=0):
         strf = self.strf[roi_set][roi_number]
-        peak_idx = np.unravel_index(strf.argmax(), strf.shape)
-        peak_phi = peak_idx[0]
-        peak_theta = peak_idx[1]
-        peak_time = peak_idx[2]
-        return peak_phi, peak_theta, peak_time
+        sigma = 2 #arbitrary
+        smoothed_strf = gaussian_filter(strf, sigma)
+
+        #peak_idx = np.unravel_index(np.argmax(smoothed_strf), strf.shape)
+        #peak_phi = peak_idx[0]
+        #peak_theta = peak_idx[1]
+        #peak_time = peak_idx[2]
+        #return peak_phi, peak_theta, peak_time
+
+        n_max_clustered = 6 #arbitrary
+        n_min_clustered = 5
+        distance_thresh = 2 #arbitrary
+
+        peak_1d_idx = np.argsort(-smoothed_strf, axis=None)[:n_max_clustered]
+
+        peak_idx_list = [np.unravel_index(x, strf.shape) for x in peak_1d_idx]
+
+        peak_location_list = [np.array([x[0],x[1]]) for x in peak_idx_list]
+
+        for i in range(len(peak_location_list)):
+            peak_loc = peak_location_list[i]
+            connected_list = [peak_location_list[0]]
+            connected_list_temp = [peak_location_list[0]]
+
+            for j in range(len(peak_location_list)):
+                if i == j:
+                    continue
+                loc = peak_location_list[j]
+                connected_list = np.array(connected_list_temp)
+                for connected_loc in connected_list:
+                    connected = np.all(np.abs(connected_loc - loc) <= distance_thresh)
+                    if connected:
+                        connected_list_temp.append(loc)
+                        continue
+            if len(connected_list) >= n_min_clustered:
+                print ("Peak cluster found!")
+                peak_phi = peak_idx_list[0][0]
+                peak_theta = peak_idx_list[0][1]
+                peak_time = peak_idx_list[0][2]
+                return peak_phi, peak_theta, peak_time
+
+        print( "no peak cluster found")
+        return None
+
 
     def plot_spatiotemporal_receptive_field(self, roi_set='column', roi_number=0, fn=None):
         print('hello')
@@ -195,7 +235,10 @@ class TernaryNoiseAnalysis():
         assert roi_number in self.strf[roi_set]
 
         #find peak
-        peak_time = self.find_peak_in_rf(roi_set, roi_number)[2]
+        peak = self.find_peak_in_rf(roi_set, roi_number)
+        if peak is None:
+            return
+        peak_time = peak[2]
 
         # get average peak from 3 values-ish around peak_time
         avg_start = peak_time-1 if peak_time > 0 else peak_time
@@ -222,7 +265,11 @@ class TernaryNoiseAnalysis():
         assert roi_number in self.strf[roi_set]
 
         #find peak
-        peak_phi, peak_phi, _ = self.find_peak_in_rf(roi_set, roi_number)
+        peak = self.find_peak_in_rf(roi_set, roi_number)
+        if peak is None:
+            return
+        peak_phi = peak[0]
+        peak_theta = peak[1]
 
         # average 9 pixels including and around the peak
         mean_rf = np.flip(np.mean(self.strf[roi_set][roi_number][peak_phi-1:peak_phi+2, peak_phi-1:peak_phi+2, :],axis=(0,1)),axis=0)
