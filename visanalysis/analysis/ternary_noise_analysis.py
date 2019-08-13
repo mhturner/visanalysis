@@ -146,7 +146,10 @@ class TernaryNoiseAnalysis():
         for phi in tqdm(range(self.num_phi)):
             for theta in range(self.num_theta):
                 stimulus = self.ternary_noise[phi,theta,:]
-                strf[phi,theta,:] = utils.getLinearFilterByFFT(stimulus, response, n_filter_frames)
+                trf = np.flip(method(stimulus, response, n_filter_frames))
+                baseline = np.mean(filt[0:int(len(trf)/4)]) ## 190812 length div by 4 is arbitrary and only works when the first quarter is too far back in history
+                trf = trf-baseline
+                strf[phi,theta,:] = trf
 
         #if dictionary for roi_set not existed then it will create an empty dictionary.
         if roi_set not in self.strf.keys():
@@ -154,7 +157,9 @@ class TernaryNoiseAnalysis():
         # a new key roi_number, value strf pair will be added
         self.strf[roi_set][roi_number] = strf
 
-        return
+        filter_time = -np.flip(np.arange(0, strf.shape[2] * self.seconds_per_unit_time, axis=0))
+
+        return strf, filter_time
 
     def plot_avg_spatial_rf(self, roi_set='column', roi_number=0, start_idx=0, end_idx=1, fn=None):
         mean_rf = np.mean(self.strf[roi_set][roi_number][:,:,start_idx:end_idx],axis=2)

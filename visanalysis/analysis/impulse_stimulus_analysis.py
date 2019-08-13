@@ -48,6 +48,7 @@ class ImpulseStimulusAnalysis():
         self.stim_time_vector = None
 
         self.impulse_stimulus_recovered = False
+        self.impulse_stimulus_bright = None
 
         self.__get_epoch_period_durations()
         self.__get_stim_time_vector()
@@ -70,8 +71,7 @@ class ImpulseStimulusAnalysis():
        #  rate to represent stimulus well so it doesn't get stretched out
        #  when trying to fit into imaging frames
         stim_time_diff = 1 / self.imaging_rate
-        stimulus = np.zeros(self.n_sample) + self.idle_color
-        self.stim_time_vector = np.arange(0, stim_time_diff * len(stimulus), stim_time_diff)
+        self.stim_time_vector = np.arange(0, stim_time_diff * self.n_sample, stim_time_diff)
         return
 
     def get_roi_set_names(self):
@@ -104,6 +104,30 @@ class ImpulseStimulusAnalysis():
 
         return epoch_indices
 
+
+    def get_epoch_response_for_roi_set(self, roi_set):
+        return self.get_roi_dict(roi_set)['epoch_response']
+
+    def get_epoch_response_by_stimulus_type_for_each_roi_in_roi_set(self, roi_set, is_bright=True, is_small=True):
+        epoch_indices = self.get_epoch_indices_by_stimulus_type(is_bright, is_small)
+        epoch_responses = self.get_epoch_response_for_roi_set(roi_set)
+
+        return epoch_responses[:,epoch_indices,:]
+
+    def get_epoch_average_response_by_stimulus_type_for_each_roi_in_roi_set(self, roi_set, is_bright=True, is_small=True):
+        roi_set_responses = self.get_epoch_response_by_stimulus_type_for_each_roi_in_roi_set(roi_set, is_bright=is_bright, is_small=is_small)
+        epoch_average_by_stimulus = np.nanmean(roi_set_responses, axis = 1)
+        return epoch_average_by_stimulus
+
+    def get_epoch_average_response_by_stimulus_type_for_roi_set(self, roi_set, is_bright=True, is_small=True):
+        roi_set_roi_avg_responses = self.get_epoch_average_response_by_stimulus_type_for_each_roi_in_roi_set(roi_set, is_bright=is_bright, is_small=is_small)
+        roi_set_avg_responses = np.nanmean(roi_set_roi_avg_responses, axis = 0)
+        return roi_set_avg_responses
+
+
+
+
+
     def get_epoch_response(self, roi_set, roi_index):
         return self.get_roi_dict(roi_set)['epoch_response'][roi_index,:,:]
 
@@ -122,8 +146,8 @@ class ImpulseStimulusAnalysis():
         return epoch_average
 
     def get_epoch_average_response_by_stimulus_type(self, roi_set, roi_index, is_bright=True, is_small=True):
-        this_roi_average_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright=is_bright, is_small=is_small)
-        epoch_average_by_stimulus = np.nanmean(this_roi_average_response, axis = 0)
+        this_roi_response = self.get_epoch_response_by_stimulus_type(roi_set, roi_index, is_bright=is_bright, is_small=is_small)
+        epoch_average_by_stimulus = np.nanmean(this_roi_response, axis = 0)
         return epoch_average_by_stimulus
 
     def plot_individual_traces_by_stimulus_type(self, roi_set='column', is_bright=True, is_small=True, n_traces=-1):
@@ -167,7 +191,7 @@ class ImpulseStimulusAnalysis():
             ax.plot (response_time_vector, trial_average, color = self.imaging_data.colors[roi_index])
 
             #plt.title("Trial average for ROI " + str(roi_index+1))
-            ax.set_title ("roi " + str(roi_index+1))
+            ax.set_title ("roi " + str(roi_index))
 
             #ax.set_ylim([min_y,max_y]) #sets the y axis limits for the plot
 
@@ -193,9 +217,9 @@ class ImpulseStimulusAnalysis():
             trial_average = self.get_epoch_average_response_by_stimulus_type(roi_set,roi_index,is_bright,is_small)
 
             if roi_index == 0:
-                ax = fig.add_subplot(2, n_rois, roi_index+1) #add an axis object to the figure
+                ax = fig.add_subplot(2, n_rois+1, roi_index+1) #add an axis object to the figure
             else:
-                ax = fig.add_subplot(2, n_rois, roi_index+1, sharey = ax) #add an axis object to the figure
+                ax = fig.add_subplot(2, n_rois+1, roi_index+1, sharey = ax) #add an axis object to the figure
 
             #Plot individual traces from current_epoch_response matrix vs. current_time vector
             if plot_individual_traces:
@@ -209,7 +233,7 @@ class ImpulseStimulusAnalysis():
             #plot the error snake around top of the trial average
             ax.fill_between(response_time_vector, trial_average - trial_error, trial_average + trial_error, alpha = 0.5, color = self.imaging_data.colors[roi_index])
 
-            ax.set_title ("roi " + str(roi_index+1))
+            ax.set_title ("roi " + str(roi_index))
             if roi_index == 0:
                 ax.set_ylabel ("dF/F")
 
@@ -217,14 +241,24 @@ class ImpulseStimulusAnalysis():
             filter, filter_time = self.compute_temporal_filter(filter_len, roi_set, roi_index, is_bright, is_small)
 
             if roi_index == 0:
-                ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1) #add an axis object to the figure
+                ax2 = fig.add_subplot(2, n_rois+1, n_rois+1+roi_index+1) #add an axis object to the figure
             else:
-                ax2 = fig.add_subplot(2, n_rois, n_rois+roi_index+1)#, sharey = ax2) #add an axis object to the figure
+                ax2 = fig.add_subplot(2, n_rois+1, n_rois+1+roi_index+1)#, sharey = ax2) #add an axis object to the figure
 
             ax2.plot(filter_time, filter, color = self.imaging_data.colors[roi_index])
 
             if roi_index == 0:
                 ax2.set_ylabel ("a.u.")
+
+        ### for avg response across rois in roi set:
+        roi_avg = self.get_epoch_average_response_by_stimulus_type_for_roi_set(roi_set, is_bright, is_small)
+        ax = fig.add_subplot(2, n_rois+1, n_rois+1, sharey = ax)
+        ax.plot (response_time_vector, roi_avg, color = 'k')
+        ax.set_title ("roi set avg")
+
+        roi_filter, filter_time = self.compute_temporal_filter_for_roi_set(filter_len, roi_set, is_bright, is_small)
+        ax2 = fig.add_subplot(2, n_rois+1, n_rois+1+n_rois+1)
+        ax2.plot(filter_time, roi_filter, color = 'k')
 
         fig.text(0.5, 0.04, 'time [s]', ha='center')
 
@@ -252,6 +286,7 @@ class ImpulseStimulusAnalysis():
         if plot:
             plt.plot(self.stim_time_vector, stimulus)
         self.impulse_stimulus_recovered = True
+        self.impulse_stimulus_bright = is_bright
         return
     #does NOT matter !!!!! TAKEN ARE OF
 
@@ -264,7 +299,7 @@ class ImpulseStimulusAnalysis():
         filter_len is defined in seconds
         '''
         #filter_len = int(len(self.impulse_stimulus) / 1.5) #what is 1.5??
-        if not self.impulse_stimulus_recovered:
+        if (not self.impulse_stimulus_recovered) or (self.impulse_stimulus_bright != is_bright):
             self.recover_impulse_stimulus(is_bright)
 
         n_filter_frames = self.sec_to_n_frames(filter_len)
@@ -276,10 +311,33 @@ class ImpulseStimulusAnalysis():
         filt = method(self.impulse_stimulus, self.get_epoch_average_response_by_stimulus_type(roi_set, roi_index, is_bright, is_small), n_filter_frames)
         filt = np.flip(filt)
 
+        baseline = np.mean(filt[0:int(len(filt)/4)]) ## 190812 length div by 4 is arbitrary and only works when the first quarter is too far back in history
+        filt = filt-baseline
+
         if plot:
             plt.plot(filter_time,filt)
         return filt, filter_time
 
+    def compute_temporal_filter_for_roi_set(self, filter_len, roi_set, is_bright=True, is_small=True, method = utils.getLinearFilterByFFT, plot=False):
+        '''
+        filter_len is defined in seconds
+        '''
+        #filter_len = int(len(self.impulse_stimulus) / 1.5) #what is 1.5??
+        if (not self.impulse_stimulus_recovered) or (self.impulse_stimulus_bright != is_bright):
+            self.recover_impulse_stimulus(is_bright)
+
+        n_filter_frames = self.sec_to_n_frames(filter_len)
+
+        #time points for filter
+        filter_time = -np.flip(self.stim_time_vector[0:n_filter_frames])
+
+        # Get the filter!
+        filt = method(self.impulse_stimulus, self.get_epoch_average_response_by_stimulus_type_for_roi_set(roi_set, is_bright, is_small), n_filter_frames)
+        filt = np.flip(filt)
+
+        if plot:
+            plt.plot(filter_time,filt)
+        return filt, filter_time
 
 #%%
    # def plot_peak_temporal_receptive_field(self, get_roi_set_names, self.n_rois, fn=None):
