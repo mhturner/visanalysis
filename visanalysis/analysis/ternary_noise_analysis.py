@@ -43,6 +43,10 @@ class TernaryNoiseAnalysis():
         sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
         return int(np.floor(sample_rate * seconds))
 
+    def n_frames_to_sec(self, n_frames):
+        sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
+        return n_frames / sample_rate
+
     def get_roi_set_names(self):
         return [*self.imaging_data.roi]
 
@@ -147,7 +151,7 @@ class TernaryNoiseAnalysis():
             for theta in range(self.num_theta):
                 stimulus = self.ternary_noise[phi,theta,:]
                 trf = np.flip(method(stimulus, response, n_filter_frames))
-                baseline = np.mean(filt[0:int(len(trf)/4)]) ## 190812 length div by 4 is arbitrary and only works when the first quarter is too far back in history
+                baseline = np.mean(trf[0:int(len(trf)/4)]) ## 190812 length div by 4 is arbitrary and only works when the first quarter is too far back in history
                 trf = trf-baseline
                 strf[phi,theta,:] = trf
 
@@ -157,7 +161,7 @@ class TernaryNoiseAnalysis():
         # a new key roi_number, value strf pair will be added
         self.strf[roi_set][roi_number] = strf
 
-        filter_time = -np.flip(np.arange(0, strf.shape[2] * self.seconds_per_unit_time, axis=0))
+        filter_time = -np.flip(np.arange(0, strf.shape[2] * self.seconds_per_unit_time), axis=0)
 
         return strf, filter_time
 
@@ -174,6 +178,14 @@ class TernaryNoiseAnalysis():
             fig.savefig(fn)
         return
 
+    def find_peak_in_rf(self, roi_set='column', roi_number=0):
+        strf = self.strf[roi_set][roi_number]
+        peak_idx = np.unravel_index(strf.argmax(), strf.shape)
+        peak_phi = peak_idx[0]
+        peak_theta = peak_idx[1]
+        peak_time = peak_idx[2]
+        return peak_phi, peak_theta, peak_time
+
     def plot_spatiotemporal_receptive_field(self, roi_set='column', roi_number=0, fn=None):
         print('hello')
 
@@ -183,14 +195,13 @@ class TernaryNoiseAnalysis():
         assert roi_number in self.strf[roi_set]
 
         #find peak
-        strf = self.strf[roi_set][roi_number]
-        peak_idx = np.unravel_index(strf.argmax(), strf.shape)
-        peak_time = peak_idx[2]
+        peak_time = self.find_peak_in_rf(roi_set, roi_number)[2]
 
         # get average peak from 3 values-ish around peak_time
         avg_start = peak_time-1 if peak_time > 0 else peak_time
         avg_end = peak_time + 2 if peak_time < self.strf[roi_set][roi_number].shape[2]-3 else self.strf[roi_set][roi_number].shape[2] -1
 
+        print ("Peak time at " + str(self.n_frames_to_sec(self.strf[roi_set][roi_number].shape[2] - peak_time - 1)) + " seconds.")
         print ("averaged over " + str(avg_end - avg_start) + " frames of strf.")
 
         mean_rf = np.mean(self.strf[roi_set][roi_number][:,:,avg_start:avg_end],axis=2)
@@ -211,13 +222,10 @@ class TernaryNoiseAnalysis():
         assert roi_number in self.strf[roi_set]
 
         #find peak
-        strf = self.strf[roi_set][roi_number]
-        peak_idx = np.unravel_index(strf.argmax(), strf.shape)
-        peak_y = peak_idx[0]
-        peak_x = peak_idx[1]
+        peak_phi, peak_phi, _ = self.find_peak_in_rf(roi_set, roi_number)
 
         # average 9 pixels including and around the peak
-        mean_rf = np.flip(np.mean(self.strf[roi_set][roi_number][peak_y-1:peak_y+2, peak_x-1:peak_x+2, :],axis=(0,1)),axis=0)
+        mean_rf = np.flip(np.mean(self.strf[roi_set][roi_number][peak_phi-1:peak_phi+2, peak_phi-1:peak_phi+2, :],axis=(0,1)),axis=0)
 
         filter_time = -np.flip(np.arange(0, len(mean_rf)) * self.seconds_per_unit_time, axis=0)
 
