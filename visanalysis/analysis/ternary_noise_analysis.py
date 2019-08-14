@@ -163,7 +163,7 @@ class TernaryNoiseAnalysis():
         # a new key roi_number, value strf pair will be added
         self.strf[roi_set][roi_number] = strf
 
-        filter_time = -np.flip(np.arange(0, strf.shape[2] * self.seconds_per_unit_time), axis=0)
+        filter_time = -np.flip(np.arange(0, strf.shape[2]) * self.seconds_per_unit_time, axis=0)
 
         return strf, filter_time
 
