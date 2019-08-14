@@ -21,7 +21,8 @@ class TernaryNoiseAnalysis():
 
         self.imaging_data = imaging_data.BrukerData.ImagingDataObject(self.fn, self.series_number, load_rois = True, z_index=z_index, upsample_rate=upsample_rate, upsample_method=upsample_method)
 
-        self.seconds_per_unit_time = np.mean(np.diff(self.imaging_data.response_timing['stack_times']))
+        #self.seconds_per_unit_time = np.mean(np.diff(self.imaging_data.response_timing['stack_times']))
+        self.seconds_per_unit_time = 1/self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else self.imaging_data.response_timing['sample_period']
 
         self.degrees_per_unit_phi = self.imaging_data.epoch_parameters[0]['phi_period']
         self.degrees_per_unit_theta = self.imaging_data.epoch_parameters[0]['theta_period']
@@ -41,11 +42,11 @@ class TernaryNoiseAnalysis():
         imsave(save_path, np.moveaxis((self.ternary_noise*255).astype(np.int16), 2, 0))
 
     def sec_to_n_frames(self, seconds):
-        sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
+        sample_rate = 1/self.seconds_per_unit_time
         return int(np.floor(sample_rate * seconds))
 
     def n_frames_to_sec(self, n_frames):
-        sample_rate = self.imaging_data.upsample_rate if self.imaging_data.upsample_rate is not None else (1/self.imaging_data.response_timing['sample_period'])
+        sample_rate = 1/self.seconds_per_unit_time
         return n_frames / sample_rate
 
     def get_roi_set_names(self):
@@ -226,10 +227,90 @@ class TernaryNoiseAnalysis():
         return None
 
 
-    def plot_spatiotemporal_receptive_field(self, roi_set='column', roi_number=0, fn=None):
-        print('hello')
+    def plot_peak_strf(self, roi_set='column', roi_number=0, spatial_radius=15, fn=None):
+        centered_strf = self.get_centered_strf(roi_set=roi_set, roi_number=roi_number, spatial_radius=spatial_radius)
+        if centered_strf is None:
+            return
 
-    def plot_peak_spatial_receptive_field(self, roi_set='column', roi_number=0, fn=None):
+        sym_strf = (centered_strf + np.swapaxes(centered_strf, 0, 1))/2
+        peak_strf = sym_strf[int(sym_strf.shape[0]/2), :, :]
+
+        max_time = self.seconds_per_unit_time * peak_strf.shape[1]
+        max_deg = self.degrees_per_unit_theta * peak_strf.shape[0]
+
+        fig = plt.figure(figsize=(12,4))
+        plt.imshow(peak_strf, cmap='inferno', extent=[-max_time,0,max_deg,0], aspect='auto')
+        plt.xlabel("Time [sec]")
+        plt.ylabel("Degrees")
+        plt.colorbar(orientation="horizontal", pad=0.2)
+
+        if fn is not None:
+            fig.savefig(fn)
+        return
+
+    def get_centered_strf(self, roi_set='column', roi_number=0, spatial_radius=15):
+        #find peak
+        peak = self.find_peak_in_rf(roi_set, roi_number)
+        if peak is None:
+            return
+
+        peak_phi = peak[0]
+        peak_theta = peak[1]
+
+        phi_radius_pixels = int(np.ceil(spatial_radius/self.degrees_per_unit_phi))
+        theta_radius_pixels = int(np.ceil(spatial_radius/self.degrees_per_unit_theta))
+
+        # average 9 pixels including and around the peak
+        return self.strf[roi_set][roi_number][peak_phi-phi_radius_pixels:peak_phi+phi_radius_pixels, peak_theta-theta_radius_pixels:peak_theta+theta_radius_pixels, :]
+
+
+    def get_centered_spatial_rf(self, roi_set='column', roi_number=0, spatial_radius=15):
+
+        assert roi_set in self.strf.keys()
+        assert roi_number in self.strf[roi_set]
+
+        centered_strf = self.get_centered_strf(roi_set=roi_set, roi_number=roi_number, spatial_radius=spatial_radius)
+
+        if centered_strf is None:
+            return
+
+        peak_time = self.find_peak_in_rf(roi_set, roi_number)[2]
+
+        # get average peak from 3 values-ish around peak_time
+        avg_start = peak_time-1 if peak_time > 0 else peak_time
+        avg_end = peak_time + 2 if peak_time < centered_strf.shape[2]-3 else centered_strf.shape[2] -1
+
+        print ("Peak time at " + str(self.n_frames_to_sec(self.strf[roi_set][roi_number].shape[2] - peak_time - 1)) + " seconds.")
+        print ("averaged over " + str(self.n_frames_to_sec(avg_end - avg_start)) + " frames of strf.")
+
+        spatial_rf = np.mean(centered_strf[:,:,avg_start:avg_end],axis=2)
+
+        return spatial_rf
+
+    def plot_centered_spatial_rf(self, roi_set='column', roi_number=0, spatial_radius=15, fn=None):
+
+        mean_rf = self.get_centered_spatial_rf(roi_set=roi_set, roi_number=roi_number, spatial_radius=spatial_radius)
+
+        if mean_rf is None:
+            return
+
+        n_phi = mean_rf.shape[0]
+        n_theta = mean_rf.shape[1]
+        deg_phi = self.degrees_per_unit_phi * n_phi
+        deg_theta = self.degrees_per_unit_theta * n_theta
+
+        fig = plt.figure(figsize=(10,5))
+        plt.imshow(mean_rf, cmap='inferno', extent=[0,deg_theta,deg_phi,0])
+        plt.xlabel("degrees")
+        plt.ylabel("degrees")
+        plt.colorbar()
+
+        if fn is not None:
+            fig.savefig(fn)
+        return
+
+
+    def plot_spatial_rf(self, roi_set='column', roi_number=0, fn=None):
 
         assert roi_set in self.strf.keys()
         assert roi_number in self.strf[roi_set]
@@ -249,7 +330,7 @@ class TernaryNoiseAnalysis():
 
         mean_rf = np.mean(self.strf[roi_set][roi_number][:,:,avg_start:avg_end],axis=2)
 
-        fig = plt.figure(figsize=(10,8))
+        fig = plt.figure(figsize=(10,5))
         plt.imshow(mean_rf, cmap='inferno', extent=[0,360,180,0])
         plt.xlabel("degrees")
         plt.ylabel("degrees")
@@ -259,7 +340,7 @@ class TernaryNoiseAnalysis():
             fig.savefig(fn)
         return
 
-    def plot_peak_temporal_receptive_field(self, roi_set='column', roi_number=0, fn=None):
+    def get_temporal_rf(self, roi_set='column', roi_number=0, spatial_radius=3):
 
         assert roi_set in self.strf.keys()
         assert roi_number in self.strf[roi_set]
@@ -272,9 +353,17 @@ class TernaryNoiseAnalysis():
         peak_theta = peak[1]
 
         # average 9 pixels including and around the peak
-        mean_rf = np.flip(np.mean(self.strf[roi_set][roi_number][peak_phi-1:peak_phi+2, peak_phi-1:peak_phi+2, :],axis=(0,1)),axis=0)
+        centered_strf = self.get_centered_strf(roi_set, roi_number, spatial_radius=spatial_radius)
+        mean_rf = np.mean(centered_strf,axis=(0,1))
 
         filter_time = -np.flip(np.arange(0, len(mean_rf)) * self.seconds_per_unit_time, axis=0)
+
+        return mean_rf, filter_time
+
+
+    def plot_temporal_rf(self, roi_set='column', roi_number=0, spatial_radius=3, fn=None):
+
+        mean_rf, filter_time = self.get_temporal_rf(roi_set=roi_set, roi_number=roi_number, spatial_radius=spatial_radius)
 
         fig = plt.figure(figsize=(10,6))
         plt.plot(filter_time, mean_rf)
