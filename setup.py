@@ -1,13 +1,13 @@
 from setuptools import setup
 
 setup(
-    name='visanalysis',
+    name='visanalysis_volume',
     version='0.1.0',
     description='Analysis environment for flystim experiments',
     url='https://github.com/ClandininLab/visanalysis',
     author='Max Turner',
     author_email='mhturner@stanford.edu',
-    packages=['visanalysis'],
+    packages=['visanalysis_volume'],
     install_requires=[
         'PyQT5',
         'numpy',
