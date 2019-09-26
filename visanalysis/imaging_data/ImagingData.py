@@ -220,7 +220,7 @@ class ImagingDataObject():
 
         print('Roi set {} loaded!'.format(roi_set_name))
 
-    def getAvailableROIsets(self, get_rois_from_other_series = True):
+    def getAvailableROIsets(self, get_rois_from_other_series = False):
         with h5py.File(os.path.join(self.flystim_data_directory, self.file_name) + '.hdf5','r+') as experiment_file:
             roi_parent_group = experiment_file['/epoch_runs'].get(str(self.series_number)).require_group('rois')
             roi_set_names = []
